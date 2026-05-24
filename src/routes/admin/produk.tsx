@@ -65,7 +65,10 @@ function AdminProduk() {
     const { error } = form.id
       ? await supabase.from("products").update(payload).eq("id", form.id)
       : await supabase.from("products").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) {
+      console.error("Save product error:", error);
+      return toast.error(`Gagal: ${error.message}${error.code ? ` (${error.code})` : ""}`);
+    }
     toast.success("Disimpan");
     setOpen(false);
     qc.invalidateQueries({ queryKey: ["admin", "products"] });
