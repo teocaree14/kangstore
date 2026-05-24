@@ -18,7 +18,7 @@ function AdminDashboard() {
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id, payment_status, created_at, product:products(price)"),
       ]);
-      const list = (orders.data ?? []) as Array<{ id: string; payment_status: string; created_at: string; product: { price: number } | null }>;
+      const list = (orders.data ?? []) as unknown as Array<{ id: string; payment_status: string; created_at: string; product: { price: number } | null }>;
       const revenue = list.filter((o) => o.payment_status === "selesai").reduce((a, o) => a + (o.product?.price ?? 0), 0);
       const pending = list.filter((o) => o.payment_status === "menunggu_pembayaran").length;
 
