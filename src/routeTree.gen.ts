@@ -9,51 +9,267 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as SiteRouteImport } from './routes/_site'
+import { Route as SiteIndexRouteImport } from './routes/_site/index'
+import { Route as SiteTestimoniRouteImport } from './routes/_site/testimoni'
+import { Route as SiteTentangRouteImport } from './routes/_site/tentang'
+import { Route as SiteStatusRouteImport } from './routes/_site/status'
+import { Route as SiteProdukRouteImport } from './routes/_site/produk'
+import { Route as SiteKontakRouteImport } from './routes/_site/kontak'
+import { Route as SiteFaqRouteImport } from './routes/_site/faq'
+import { Route as SiteCheckoutRouteImport } from './routes/_site/checkout'
+import { Route as SiteProdukIdRouteImport } from './routes/_site/produk.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const SiteRoute = SiteRouteImport.update({
+  id: '/_site',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SiteIndexRoute = SiteIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteTestimoniRoute = SiteTestimoniRouteImport.update({
+  id: '/testimoni',
+  path: '/testimoni',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteTentangRoute = SiteTentangRouteImport.update({
+  id: '/tentang',
+  path: '/tentang',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteStatusRoute = SiteStatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteProdukRoute = SiteProdukRouteImport.update({
+  id: '/produk',
+  path: '/produk',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteKontakRoute = SiteKontakRouteImport.update({
+  id: '/kontak',
+  path: '/kontak',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteFaqRoute = SiteFaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteCheckoutRoute = SiteCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteProdukIdRoute = SiteProdukIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SiteProdukRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof SiteIndexRoute
+  '/checkout': typeof SiteCheckoutRoute
+  '/faq': typeof SiteFaqRoute
+  '/kontak': typeof SiteKontakRoute
+  '/produk': typeof SiteProdukRouteWithChildren
+  '/status': typeof SiteStatusRoute
+  '/tentang': typeof SiteTentangRoute
+  '/testimoni': typeof SiteTestimoniRoute
+  '/produk/$id': typeof SiteProdukIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/checkout': typeof SiteCheckoutRoute
+  '/faq': typeof SiteFaqRoute
+  '/kontak': typeof SiteKontakRoute
+  '/produk': typeof SiteProdukRouteWithChildren
+  '/status': typeof SiteStatusRoute
+  '/tentang': typeof SiteTentangRoute
+  '/testimoni': typeof SiteTestimoniRoute
+  '/': typeof SiteIndexRoute
+  '/produk/$id': typeof SiteProdukIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_site': typeof SiteRouteWithChildren
+  '/_site/checkout': typeof SiteCheckoutRoute
+  '/_site/faq': typeof SiteFaqRoute
+  '/_site/kontak': typeof SiteKontakRoute
+  '/_site/produk': typeof SiteProdukRouteWithChildren
+  '/_site/status': typeof SiteStatusRoute
+  '/_site/tentang': typeof SiteTentangRoute
+  '/_site/testimoni': typeof SiteTestimoniRoute
+  '/_site/': typeof SiteIndexRoute
+  '/_site/produk/$id': typeof SiteProdukIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/checkout'
+    | '/faq'
+    | '/kontak'
+    | '/produk'
+    | '/status'
+    | '/tentang'
+    | '/testimoni'
+    | '/produk/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/checkout'
+    | '/faq'
+    | '/kontak'
+    | '/produk'
+    | '/status'
+    | '/tentang'
+    | '/testimoni'
+    | '/'
+    | '/produk/$id'
+  id:
+    | '__root__'
+    | '/_site'
+    | '/_site/checkout'
+    | '/_site/faq'
+    | '/_site/kontak'
+    | '/_site/produk'
+    | '/_site/status'
+    | '/_site/tentang'
+    | '/_site/testimoni'
+    | '/_site/'
+    | '/_site/produk/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  SiteRoute: typeof SiteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_site': {
+      id: '/_site'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof SiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_site/': {
+      id: '/_site/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof SiteIndexRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/testimoni': {
+      id: '/_site/testimoni'
+      path: '/testimoni'
+      fullPath: '/testimoni'
+      preLoaderRoute: typeof SiteTestimoniRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/tentang': {
+      id: '/_site/tentang'
+      path: '/tentang'
+      fullPath: '/tentang'
+      preLoaderRoute: typeof SiteTentangRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/status': {
+      id: '/_site/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof SiteStatusRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/produk': {
+      id: '/_site/produk'
+      path: '/produk'
+      fullPath: '/produk'
+      preLoaderRoute: typeof SiteProdukRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/kontak': {
+      id: '/_site/kontak'
+      path: '/kontak'
+      fullPath: '/kontak'
+      preLoaderRoute: typeof SiteKontakRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/faq': {
+      id: '/_site/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof SiteFaqRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/checkout': {
+      id: '/_site/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof SiteCheckoutRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/produk/$id': {
+      id: '/_site/produk/$id'
+      path: '/$id'
+      fullPath: '/produk/$id'
+      preLoaderRoute: typeof SiteProdukIdRouteImport
+      parentRoute: typeof SiteProdukRoute
     }
   }
 }
 
+interface SiteProdukRouteChildren {
+  SiteProdukIdRoute: typeof SiteProdukIdRoute
+}
+
+const SiteProdukRouteChildren: SiteProdukRouteChildren = {
+  SiteProdukIdRoute: SiteProdukIdRoute,
+}
+
+const SiteProdukRouteWithChildren = SiteProdukRoute._addFileChildren(
+  SiteProdukRouteChildren,
+)
+
+interface SiteRouteChildren {
+  SiteCheckoutRoute: typeof SiteCheckoutRoute
+  SiteFaqRoute: typeof SiteFaqRoute
+  SiteKontakRoute: typeof SiteKontakRoute
+  SiteProdukRoute: typeof SiteProdukRouteWithChildren
+  SiteStatusRoute: typeof SiteStatusRoute
+  SiteTentangRoute: typeof SiteTentangRoute
+  SiteTestimoniRoute: typeof SiteTestimoniRoute
+  SiteIndexRoute: typeof SiteIndexRoute
+}
+
+const SiteRouteChildren: SiteRouteChildren = {
+  SiteCheckoutRoute: SiteCheckoutRoute,
+  SiteFaqRoute: SiteFaqRoute,
+  SiteKontakRoute: SiteKontakRoute,
+  SiteProdukRoute: SiteProdukRouteWithChildren,
+  SiteStatusRoute: SiteStatusRoute,
+  SiteTentangRoute: SiteTentangRoute,
+  SiteTestimoniRoute: SiteTestimoniRoute,
+  SiteIndexRoute: SiteIndexRoute,
+}
+
+const SiteRouteWithChildren = SiteRoute._addFileChildren(SiteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  SiteRoute: SiteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
