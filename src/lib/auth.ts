@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "./supabase";
 import { checkAdminAccess } from "./admin.functions";
 
 export function useAuth() {
+  const checkAdmin = useServerFn(checkAdminAccess);
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -13,7 +15,7 @@ export function useAuth() {
       setUser(u ? { id: u.id, email: u.email ?? null } : null);
       if (u) {
         try {
-          await checkAdminAccess();
+          await checkAdmin();
           setIsAdmin(true);
         } catch {
           setIsAdmin(false);
@@ -27,7 +29,7 @@ export function useAuth() {
       setUser(u ? { id: u.id, email: u.email ?? null } : null);
       if (u) {
         try {
-          await checkAdminAccess();
+          await checkAdmin();
           setIsAdmin(true);
         } catch {
           setIsAdmin(false);
@@ -39,7 +41,7 @@ export function useAuth() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [checkAdmin]);
 
   return { user, isAdmin, loading };
 }
