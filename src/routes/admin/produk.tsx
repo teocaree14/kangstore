@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase, type Product } from "@/lib/supabase";
+import { useServerFn } from "@tanstack/react-start";
+import { type Product } from "@/lib/supabase";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Plus, Pencil, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { formatIDR } from "@/lib/cart";
+import { deleteAdminProduct, getAdminProducts, saveAdminProduct, uploadAdminProductImage } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin/produk")({
   component: AdminProduk,
@@ -25,13 +27,25 @@ type FormState = {
 };
 const empty: FormState = { name: "", provider: "Telkomsel", price: 0, quota: "", active_period: "", description: "", image: "", stock: 1 };
 
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(new Error("Gagal membaca gambar"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function AdminProduk() {
   const qc = useQueryClient();
+  const getProducts = useServerFn(getAdminProducts);
+  const saveProduct = useServerFn(saveAdminProduct);
+  const deleteProduct = useServerFn(deleteAdminProduct);
+  const uploadProductImage = useServerFn(uploadAdminProductImage);
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "products"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
-      return (data ?? []) as Product[];
+      return (await getProducts()) as Product[];
     },
   });
 
@@ -48,11 +62,9 @@ function AdminProduk() {
   const uploadImage = async (file: File) => {
     setUploading(true);
     try {
-      const path = `products/${crypto.randomUUID()}.${file.name.split(".").pop()}`;
-      const { error } = await supabase.storage.from("product-images").upload(path, file);
-      if (error) throw error;
-      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-      setForm((f) => ({ ...f, image: data.publicUrl }));
+      const base64 = await fileToBase64(file);
+      const { publicUrl } = await uploadProductImage({ data: { fileName: file.name, contentType: file.type, base64 } });
+      setForm((f) => ({ ...f, image: publicUrl }));
       toast.success("Gambar diupload");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Upload gagal");
@@ -62,12 +74,11 @@ function AdminProduk() {
   const save = async () => {
     if (!form.name || !form.price) return toast.error("Nama dan harga wajib diisi");
     const payload = { name: form.name, provider: form.provider, price: form.price, quota: form.quota, active_period: form.active_period, description: form.description, image: form.image || null, stock: form.stock };
-    const { error } = form.id
-      ? await supabase.from("products").update(payload).eq("id", form.id)
-      : await supabase.from("products").insert(payload);
-    if (error) {
+    try {
+      await saveProduct({ data: form.id ? { ...payload, id: form.id } : payload });
+    } catch (error) {
       console.error("Save product error:", error);
-      return toast.error(`Gagal: ${error.message}${error.code ? ` (${error.code})` : ""}`);
+      return toast.error(error instanceof Error ? error.message : "Gagal menyimpan produk");
     }
     toast.success("Disimpan");
     setOpen(false);
@@ -77,8 +88,11 @@ function AdminProduk() {
 
   const remove = async (id: string) => {
     if (!confirm("Hapus produk ini?")) return;
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteProduct({ data: { id } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Gagal menghapus produk");
+    }
     toast.success("Dihapus");
     qc.invalidateQueries({ queryKey: ["admin", "products"] });
   };

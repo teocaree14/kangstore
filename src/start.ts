@@ -2,6 +2,13 @@ import { createStart, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
 
+const attachSupabaseAuth = createMiddleware({ type: "function" }).client(async ({ next }) => {
+  const { supabase } = await import("./lib/supabase");
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? next({ headers: { Authorization: `Bearer ${token}` } }) : next();
+});
+
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
     return await next();
@@ -19,4 +26,5 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware],
+  functionMiddleware: [attachSupabaseAuth],
 }));

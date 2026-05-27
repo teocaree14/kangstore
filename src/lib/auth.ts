@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "./supabase";
+import { checkAdminAccess } from "./admin.functions";
 
 export function useAuth() {
+  const checkAdmin = useServerFn(checkAdminAccess);
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -11,8 +14,12 @@ export function useAuth() {
       const u = session?.user ?? null;
       setUser(u ? { id: u.id, email: u.email ?? null } : null);
       if (u) {
-        const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.id).eq("role", "admin").maybeSingle();
-        setIsAdmin(!!data);
+        try {
+          await checkAdmin();
+          setIsAdmin(true);
+        } catch {
+          setIsAdmin(false);
+        }
       } else setIsAdmin(false);
       setLoading(false);
     });
@@ -21,14 +28,20 @@ export function useAuth() {
       const u = data.session?.user ?? null;
       setUser(u ? { id: u.id, email: u.email ?? null } : null);
       if (u) {
-        const { data: r } = await supabase.from("user_roles").select("role").eq("user_id", u.id).eq("role", "admin").maybeSingle();
-        setIsAdmin(!!r);
+        try {
+          await checkAdmin();
+          setIsAdmin(true);
+        } catch {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [checkAdmin]);
 
   return { user, isAdmin, loading };
 }
