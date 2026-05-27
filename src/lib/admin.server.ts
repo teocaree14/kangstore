@@ -89,6 +89,7 @@ export async function deleteProductAsAdmin(id: string) {
 export async function uploadProductImageAsAdmin(input: UploadProductImageInput) {
   const admin = getServiceRoleClient();
   await admin.storage.createBucket("product-images", { public: true }).catch(() => null);
+  await admin.storage.updateBucket("product-images", { public: true }).catch(() => null);
 
   const extension = input.fileName.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
   const path = `products/${crypto.randomUUID()}.${extension}`;
