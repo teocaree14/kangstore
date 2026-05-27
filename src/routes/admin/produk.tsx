@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase, type Product } from "@/lib/supabase";
+import { type Product } from "@/lib/supabase";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,15 @@ type FormState = {
   description: string; image: string; stock: number;
 };
 const empty: FormState = { name: "", provider: "Telkomsel", price: 0, quota: "", active_period: "", description: "", image: "", stock: 1 };
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(new Error("Gagal membaca gambar"));
+    reader.readAsDataURL(file);
+  });
+}
 
 function AdminProduk() {
   const qc = useQueryClient();
