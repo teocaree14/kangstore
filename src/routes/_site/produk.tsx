@@ -79,6 +79,8 @@ function ProdukPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[3/4] rounded-xl" />)}
         </div>
+      ) : error ? (
+        <Card className="p-12 text-center text-destructive">Gagal memuat produk: {(error as Error).message}</Card>
       ) : !filtered.length ? (
         <Card className="p-12 text-center text-muted-foreground">Belum ada produk yang cocok.</Card>
       ) : (
