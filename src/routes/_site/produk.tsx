@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
+import { useRealtimeProducts } from "@/hooks/use-realtime-products";
 
 export const Route = createFileRoute("/_site/produk")({
   head: () => ({
@@ -31,10 +32,13 @@ function ProdukPage() {
   const [provider, setProvider] = useState("Semua");
   const [sort, setSort] = useState("newest");
 
-  const { data, isLoading } = useQuery({
+  useRealtimeProducts();
+
+  const { data, isLoading, error } = useQuery({
     queryKey: ["products", "all"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("*");
+      const { data, error } = await supabase.from("products").select("*");
+      if (error) throw error;
       return (data ?? []) as Product[];
     },
   });

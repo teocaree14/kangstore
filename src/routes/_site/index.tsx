@@ -8,6 +8,8 @@ import { ProductCard } from "@/components/site/ProductCard";
 import { supabase, type Product, type Testimonial } from "@/lib/supabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRealtimeProducts } from "@/hooks/use-realtime-products";
 
 export const Route = createFileRoute("/_site/")({
   head: () => ({
@@ -20,10 +22,16 @@ export const Route = createFileRoute("/_site/")({
 });
 
 function HomePage() {
-  const { data: products } = useQuery({
+  useRealtimeProducts();
+  const { data: products, isLoading, error } = useQuery({
     queryKey: ["products", "featured"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false }).limit(6);
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (error) throw error;
       return (data ?? []) as Product[];
     },
   });
@@ -109,7 +117,17 @@ function HomePage() {
           </div>
           <Button asChild variant="ghost"><Link to="/produk">Lihat Semua <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
         </div>
-        {!products?.length ? (
+        {isLoading ? (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+            ))}
+          </div>
+        ) : error ? (
+          <Card className="p-12 text-center text-destructive">
+            Gagal memuat produk: {(error as Error).message}
+          </Card>
+        ) : !products?.length ? (
           <Card className="p-12 text-center text-muted-foreground">
             <Package className="h-10 w-10 mx-auto opacity-50 mb-3" />
             <p>Belum ada produk. Tambahkan produk dari admin dashboard.</p>
