@@ -24,7 +24,7 @@ function AdminLayout() {
 
   useEffect(() => {
     if (!loading && !user) nav({ to: "/login", search: { redirect: path } });
-  }, [loading, user, nav]);
+  }, [loading, user, nav, path]);
 
   if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Memuat...</div>;
   if (!user) return null;
