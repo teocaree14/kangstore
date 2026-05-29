@@ -1,8 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Moon, Sun, ShoppingCart, Search, Menu, X, Sparkles } from "lucide-react";
+import { Moon, Sun, ShoppingCart, Search, Menu, X, Sparkles, LayoutDashboard, LogIn } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/lib/theme";
 import { useCart } from "@/lib/cart";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -20,6 +21,7 @@ const links = [
 
 export function Navbar() {
   const { theme, toggle } = useTheme();
+  const { user } = useAuth();
   const count = useCart((s) => s.count());
   const items = useCart((s) => s.items);
   const remove = useCart((s) => s.remove);
@@ -39,19 +41,16 @@ export function Navbar() {
 
         <nav className="hidden md:flex items-center gap-1 ml-6">
           {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
+            <Link key={l.to} to={l.to}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors hover:text-primary ${
                 path === l.to ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
+              }`}>
               {l.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden lg:flex relative ml-auto w-64">
+        <div className="hidden lg:flex relative ml-auto w-56">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Cari kartu perdana..." className="pl-9 bg-background/50" />
         </div>
@@ -66,9 +65,7 @@ export function Navbar() {
               <Button variant="ghost" size="icon" className="relative" aria-label="Cart">
                 <ShoppingCart className="h-4 w-4" />
                 {count > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 bg-gradient-primary text-primary-foreground">
-                    {count}
-                  </Badge>
+                  <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 bg-gradient-primary text-primary-foreground">{count}</Badge>
                 )}
               </Button>
             </SheetTrigger>
@@ -85,9 +82,7 @@ export function Navbar() {
                       <p className="text-xs text-muted-foreground">{i.product.provider} · {i.product.quota}</p>
                       <p className="text-sm font-semibold text-primary mt-1">{formatIDR(i.product.price)} × {i.qty}</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => remove(i.product.id)}>
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => remove(i.product.id)}><X className="h-4 w-4" /></Button>
                   </div>
                 ))}
               </div>
@@ -97,14 +92,21 @@ export function Navbar() {
                     <span>Total</span><span className="text-primary">{formatIDR(total)}</span>
                   </div>
                   <Link to="/checkout"><Button className="w-full bg-gradient-primary shadow-glow">Checkout</Button></Link>
+                  <p className="text-xs text-muted-foreground text-center">Minimal pembelian 25 pcs</p>
                 </div>
               )}
             </SheetContent>
           </Sheet>
 
-          <Button asChild className="hidden md:inline-flex bg-gradient-primary shadow-glow ml-2">
-            <Link to="/produk">Beli Sekarang</Link>
-          </Button>
+          {user ? (
+            <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex ml-2">
+              <Link to="/dashboard"><LayoutDashboard className="h-4 w-4 mr-1" /> Dashboard</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex ml-2">
+              <Link to="/login" search={{ redirect: undefined }}><LogIn className="h-4 w-4 mr-1" /> Login</Link>
+            </Button>
+          )}
 
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen(!open)}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -121,6 +123,11 @@ export function Navbar() {
                 {l.label}
               </Link>
             ))}
+            {user ? (
+              <Link to="/dashboard" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm text-primary font-medium">Dashboard</Link>
+            ) : (
+              <Link to="/login" search={{ redirect: undefined }} onClick={() => setOpen(false)} className="px-3 py-2 rounded-md text-sm text-primary font-medium">Login</Link>
+            )}
           </div>
         </nav>
       )}

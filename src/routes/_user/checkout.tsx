@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { Card } from "@/components/ui/card";
@@ -7,16 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Copy, CheckCircle2, Upload, QrCode } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Copy, Upload, QrCode, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatIDR, useCart } from "@/lib/cart";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 
-export const Route = createFileRoute("/_site/checkout")({
+export const Route = createFileRoute("/_user/checkout")({
   component: CheckoutPage,
 });
+
+const MIN_QTY = 25;
 
 const schema = z.object({
   customer_name: z.string().trim().min(2, "Nama minimal 2 karakter").max(100),
@@ -26,18 +28,25 @@ const schema = z.object({
 });
 
 function CheckoutPage() {
+  const { user } = useAuth();
+  const nav = useNavigate();
   const items = useCart((s) => s.items);
   const total = useCart((s) => s.total());
+  const count = useCart((s) => s.count());
+  const setQty = useCart((s) => s.setQty);
   const clear = useCart((s) => s.clear);
   const [form, setForm] = useState({ customer_name: "", phone: "", address: "", payment_method: "BCA" as "BCA" | "DANA" });
   const [proof, setProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+
+  const belowMin = count < MIN_QTY;
 
   const copy = (v: string, l: string) => { navigator.clipboard.writeText(v); toast.success(`${l} disalin`); };
 
   const submit = async () => {
+    if (!user) return toast.error("Anda harus login");
     if (!items.length) return toast.error("Keranjang kosong");
+    if (belowMin) return toast.error(`Minimal pembelian adalah ${MIN_QTY} pcs.`);
     const parsed = schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0].message);
 
@@ -49,25 +58,44 @@ function CheckoutPage() {
         const path = `proofs/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("product-images").upload(path, proof);
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("product-images").getPublicUrl(path);
-        proof_url = pub.publicUrl;
+        proof_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
       }
-      // Create one order per item (simple model)
-      const rows = items.map((i) => ({
+
+      const invoice = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+
+      // Insert order header
+      const { data: order, error } = await supabase.from("orders").insert({
+        user_id: user.id,
         customer_name: form.customer_name,
         phone: form.phone,
-        product_id: i.product.id,
+        address: form.address,
+        product_id: items[0].product.id,
         payment_method: form.payment_method,
-        payment_status: "menunggu_pembayaran" as const,
+        payment_status: "menunggu_pembayaran",
+        shipping_status: "menunggu_pembayaran",
         proof_image: proof_url,
-      }));
-      const { data, error } = await supabase.from("orders").insert(rows).select("id");
+        invoice_number: invoice,
+        total_price: total,
+      }).select("id").single();
       if (error) throw error;
+
+      // Insert items
+      const { error: itErr } = await supabase.from("order_items").insert(
+        items.map((i) => ({
+          order_id: order.id,
+          product_id: i.product.id,
+          product_name: i.product.name,
+          quantity: i.qty,
+          price: i.product.price,
+        }))
+      );
+      if (itErr) throw itErr;
+
       clear();
-      setSuccess(data?.[0]?.id ?? null);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Gagal membuat pesanan";
-      toast.error(msg);
+      toast.success("Pesanan berhasil dibuat!");
+      nav({ to: "/dashboard/pesanan/$id", params: { id: order.id } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal membuat pesanan");
     } finally {
       setLoading(false);
     }
@@ -75,10 +103,41 @@ function CheckoutPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <h1 className="font-display text-3xl md:text-4xl font-bold mb-8">Checkout</h1>
+      <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">Checkout</h1>
+      <p className="text-muted-foreground mb-6">Total {count} pcs · Minimal pembelian {MIN_QTY} pcs</p>
+
+      {belowMin && items.length > 0 && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Belum memenuhi minimal pembelian</AlertTitle>
+          <AlertDescription>
+            Minimal pembelian adalah <strong>{MIN_QTY} pcs</strong>. Saat ini di keranjang ada <strong>{count} pcs</strong>. Tambahkan {MIN_QTY - count} pcs lagi untuk lanjut checkout.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          <Card className="p-6 space-y-4">
+            <h2 className="font-semibold text-lg">Keranjang</h2>
+            {items.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">Keranjang kosong</p>
+            ) : items.map((i) => (
+              <div key={i.product.id} className="flex items-center gap-3 border-b pb-3 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{i.product.name}</p>
+                  <p className="text-xs text-muted-foreground">{i.product.provider} · {formatIDR(i.product.price)}/pcs</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(i.product.id, i.qty - 1)}>-</Button>
+                  <Input type="number" min={1} value={i.qty} onChange={(e) => setQty(i.product.id, Math.max(1, Number(e.target.value)))} className="h-7 w-16 text-center" />
+                  <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(i.product.id, i.qty + 1)}>+</Button>
+                </div>
+                <p className="font-semibold w-24 text-right text-sm">{formatIDR(i.product.price * i.qty)}</p>
+              </div>
+            ))}
+          </Card>
+
           <Card className="p-6 space-y-4">
             <h2 className="font-semibold text-lg">Data Pembeli</h2>
             <div><Label>Nama Lengkap</Label><Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} placeholder="Nama lengkap" /></div>
@@ -118,72 +177,39 @@ function CheckoutPage() {
                 </>
               )}
               <div className="flex items-center gap-3 pt-2">
-                <div className="h-24 w-24 grid place-items-center rounded-lg bg-background border border-dashed">
-                  <QrCode className="h-12 w-12 text-muted-foreground" />
+                <div className="h-20 w-20 grid place-items-center rounded-lg bg-background border border-dashed">
+                  <QrCode className="h-10 w-10 text-muted-foreground" />
                 </div>
-                <p className="text-xs text-muted-foreground">QR pembayaran tersedia di halaman ini setelah konfirmasi pesanan.</p>
+                <p className="text-xs text-muted-foreground">QR pembayaran tersedia setelah konfirmasi.</p>
               </div>
             </div>
 
             <div>
               <Label>Upload Bukti Transfer (opsional)</Label>
-              <div className="mt-1 flex items-center gap-3">
-                <label className="flex-1 cursor-pointer rounded-xl border-2 border-dashed p-4 hover:bg-muted/30 transition-colors text-center">
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setProof(e.target.files?.[0] ?? null)} />
-                  <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
-                  <p className="text-sm mt-1">{proof ? proof.name : "Klik untuk upload bukti transfer"}</p>
-                </label>
-              </div>
+              <label className="mt-1 block cursor-pointer rounded-xl border-2 border-dashed p-4 hover:bg-muted/30 transition-colors text-center">
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => setProof(e.target.files?.[0] ?? null)} />
+                <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
+                <p className="text-sm mt-1">{proof ? proof.name : "Klik untuk upload bukti transfer"}</p>
+              </label>
             </div>
           </Card>
         </div>
 
         <div className="lg:col-span-1">
           <Card className="p-6 sticky top-24 space-y-4">
-            <h2 className="font-semibold text-lg">Ringkasan Pesanan</h2>
-            {items.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">Keranjang kosong</p>
-            ) : (
-              <div className="space-y-3 max-h-64 overflow-auto">
-                {items.map((i) => (
-                  <div key={i.product.id} className="flex justify-between text-sm">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{i.product.name}</p>
-                      <p className="text-xs text-muted-foreground">{i.product.provider} × {i.qty}</p>
-                    </div>
-                    <p className="font-semibold whitespace-nowrap">{formatIDR(i.product.price * i.qty)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            <h2 className="font-semibold text-lg">Ringkasan</h2>
+            <div className="flex justify-between text-sm"><span>Total item</span><span>{count} pcs</span></div>
+            <div className="flex justify-between text-sm"><span>Minimal</span><span>{MIN_QTY} pcs</span></div>
             <div className="border-t pt-3 flex justify-between font-bold">
               <span>Total</span><span className="text-gradient">{formatIDR(total)}</span>
             </div>
-            <Button onClick={submit} disabled={loading || !items.length} className="w-full bg-gradient-primary shadow-glow" size="lg">
-              {loading ? "Memproses..." : "Saya Sudah Bayar"}
+            <Button onClick={submit} disabled={loading || !items.length || belowMin} className="w-full bg-gradient-primary shadow-glow" size="lg">
+              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...</> : belowMin ? `Minimal ${MIN_QTY} pcs` : "Saya Sudah Bayar"}
             </Button>
+            {belowMin && <p className="text-xs text-destructive text-center">Tombol aktif setelah keranjang ≥ {MIN_QTY} pcs.</p>}
           </Card>
         </div>
       </div>
-
-      <Dialog open={!!success} onOpenChange={(o) => !o && (window.location.href = "/")}>
-        <DialogContent>
-          <DialogHeader>
-            <div className="mx-auto h-16 w-16 grid place-items-center rounded-full bg-success/15 text-success mb-2">
-              <CheckCircle2 className="h-8 w-8" />
-            </div>
-            <DialogTitle className="text-center">Pesanan Berhasil Dibuat!</DialogTitle>
-            <DialogDescription className="text-center">
-              ID Pesanan: <Badge variant="outline" className="font-mono">{success?.slice(0, 8)}</Badge><br />
-              Tim kami akan memverifikasi pembayaran kamu segera.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:justify-center gap-2">
-            <Button variant="outline" onClick={() => (window.location.href = "/")}>Beranda</Button>
-            <Button className="bg-gradient-primary" onClick={() => (window.location.href = `/status?id=${success}`)}>Lihat Status</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
