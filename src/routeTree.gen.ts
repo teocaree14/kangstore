@@ -10,25 +10,46 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as UserRouteImport } from './routes/_user'
 import { Route as SiteRouteImport } from './routes/_site'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as SiteIndexRouteImport } from './routes/_site/index'
 import { Route as AdminTestimoniRouteImport } from './routes/admin/testimoni'
 import { Route as AdminProdukRouteImport } from './routes/admin/produk'
 import { Route as AdminPesananRouteImport } from './routes/admin/pesanan'
+import { Route as UserDashboardRouteImport } from './routes/_user/dashboard'
+import { Route as UserCheckoutRouteImport } from './routes/_user/checkout'
 import { Route as SiteTestimoniRouteImport } from './routes/_site/testimoni'
 import { Route as SiteTentangRouteImport } from './routes/_site/tentang'
 import { Route as SiteStatusRouteImport } from './routes/_site/status'
 import { Route as SiteProdukRouteImport } from './routes/_site/produk'
 import { Route as SiteKontakRouteImport } from './routes/_site/kontak'
 import { Route as SiteFaqRouteImport } from './routes/_site/faq'
+import { Route as UserDashboardIndexRouteImport } from './routes/_user/dashboard/index'
+import { Route as UserDashboardTrackingRouteImport } from './routes/_user/dashboard/tracking'
+import { Route as UserDashboardProfilRouteImport } from './routes/_user/dashboard/profil'
+import { Route as UserDashboardPesananRouteImport } from './routes/_user/dashboard/pesanan'
 import { Route as SiteProdukIdRouteImport } from './routes/_site/produk.$id'
+import { Route as UserDashboardPesananIdRouteImport } from './routes/_user/dashboard/pesanan.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -36,9 +57,18 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UserRoute = UserRouteImport.update({
+  id: '/_user',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SiteRoute = SiteRouteImport.update({
@@ -70,6 +100,16 @@ const AdminPesananRoute = AdminPesananRouteImport.update({
   path: '/pesanan',
   getParentRoute: () => AdminRoute,
 } as any)
+const UserDashboardRoute = UserDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => UserRoute,
+} as any)
+const UserCheckoutRoute = UserCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => UserRoute,
+} as any)
 const SiteTestimoniRoute = SiteTestimoniRouteImport.update({
   id: '/testimoni',
   path: '/testimoni',
@@ -100,16 +140,44 @@ const SiteFaqRoute = SiteFaqRouteImport.update({
   path: '/faq',
   getParentRoute: () => SiteRoute,
 } as any)
+const UserDashboardIndexRoute = UserDashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UserDashboardRoute,
+} as any)
+const UserDashboardTrackingRoute = UserDashboardTrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
+  getParentRoute: () => UserDashboardRoute,
+} as any)
+const UserDashboardProfilRoute = UserDashboardProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => UserDashboardRoute,
+} as any)
+const UserDashboardPesananRoute = UserDashboardPesananRouteImport.update({
+  id: '/pesanan',
+  path: '/pesanan',
+  getParentRoute: () => UserDashboardRoute,
+} as any)
 const SiteProdukIdRoute = SiteProdukIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => SiteProdukRoute,
 } as any)
+const UserDashboardPesananIdRoute = UserDashboardPesananIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => UserDashboardPesananRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof SiteIndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/faq': typeof SiteFaqRoute
   '/kontak': typeof SiteKontakRoute
@@ -117,14 +185,25 @@ export interface FileRoutesByFullPath {
   '/status': typeof SiteStatusRoute
   '/tentang': typeof SiteTentangRoute
   '/testimoni': typeof SiteTestimoniRoute
+  '/checkout': typeof UserCheckoutRoute
+  '/dashboard': typeof UserDashboardRouteWithChildren
   '/admin/pesanan': typeof AdminPesananRoute
   '/admin/produk': typeof AdminProdukRoute
   '/admin/testimoni': typeof AdminTestimoniRoute
   '/admin/': typeof AdminIndexRoute
   '/produk/$id': typeof SiteProdukIdRoute
+  '/dashboard/pesanan': typeof UserDashboardPesananRouteWithChildren
+  '/dashboard/profil': typeof UserDashboardProfilRoute
+  '/dashboard/tracking': typeof UserDashboardTrackingRoute
+  '/dashboard/': typeof UserDashboardIndexRoute
+  '/dashboard/pesanan/$id': typeof UserDashboardPesananIdRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof SiteIndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/faq': typeof SiteFaqRoute
   '/kontak': typeof SiteKontakRoute
@@ -132,18 +211,27 @@ export interface FileRoutesByTo {
   '/status': typeof SiteStatusRoute
   '/tentang': typeof SiteTentangRoute
   '/testimoni': typeof SiteTestimoniRoute
+  '/checkout': typeof UserCheckoutRoute
   '/admin/pesanan': typeof AdminPesananRoute
   '/admin/produk': typeof AdminProdukRoute
   '/admin/testimoni': typeof AdminTestimoniRoute
-  '/': typeof SiteIndexRoute
   '/admin': typeof AdminIndexRoute
   '/produk/$id': typeof SiteProdukIdRoute
+  '/dashboard/pesanan': typeof UserDashboardPesananRouteWithChildren
+  '/dashboard/profil': typeof UserDashboardProfilRoute
+  '/dashboard/tracking': typeof UserDashboardTrackingRoute
+  '/dashboard': typeof UserDashboardIndexRoute
+  '/dashboard/pesanan/$id': typeof UserDashboardPesananIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_site': typeof SiteRouteWithChildren
+  '/_user': typeof UserRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_site/faq': typeof SiteFaqRoute
   '/_site/kontak': typeof SiteKontakRoute
@@ -151,19 +239,29 @@ export interface FileRoutesById {
   '/_site/status': typeof SiteStatusRoute
   '/_site/tentang': typeof SiteTentangRoute
   '/_site/testimoni': typeof SiteTestimoniRoute
+  '/_user/checkout': typeof UserCheckoutRoute
+  '/_user/dashboard': typeof UserDashboardRouteWithChildren
   '/admin/pesanan': typeof AdminPesananRoute
   '/admin/produk': typeof AdminProdukRoute
   '/admin/testimoni': typeof AdminTestimoniRoute
   '/_site/': typeof SiteIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/_site/produk/$id': typeof SiteProdukIdRoute
+  '/_user/dashboard/pesanan': typeof UserDashboardPesananRouteWithChildren
+  '/_user/dashboard/profil': typeof UserDashboardProfilRoute
+  '/_user/dashboard/tracking': typeof UserDashboardTrackingRoute
+  '/_user/dashboard/': typeof UserDashboardIndexRoute
+  '/_user/dashboard/pesanan/$id': typeof UserDashboardPesananIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
+    | '/forgot-password'
     | '/login'
+    | '/register'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/faq'
     | '/kontak'
@@ -171,14 +269,25 @@ export interface FileRouteTypes {
     | '/status'
     | '/tentang'
     | '/testimoni'
+    | '/checkout'
+    | '/dashboard'
     | '/admin/pesanan'
     | '/admin/produk'
     | '/admin/testimoni'
     | '/admin/'
     | '/produk/$id'
+    | '/dashboard/pesanan'
+    | '/dashboard/profil'
+    | '/dashboard/tracking'
+    | '/dashboard/'
+    | '/dashboard/pesanan/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
+    | '/forgot-password'
     | '/login'
+    | '/register'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/faq'
     | '/kontak'
@@ -186,17 +295,26 @@ export interface FileRouteTypes {
     | '/status'
     | '/tentang'
     | '/testimoni'
+    | '/checkout'
     | '/admin/pesanan'
     | '/admin/produk'
     | '/admin/testimoni'
-    | '/'
     | '/admin'
     | '/produk/$id'
+    | '/dashboard/pesanan'
+    | '/dashboard/profil'
+    | '/dashboard/tracking'
+    | '/dashboard'
+    | '/dashboard/pesanan/$id'
   id:
     | '__root__'
     | '/_site'
+    | '/_user'
     | '/admin'
+    | '/forgot-password'
     | '/login'
+    | '/register'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/_site/faq'
     | '/_site/kontak'
@@ -204,18 +322,29 @@ export interface FileRouteTypes {
     | '/_site/status'
     | '/_site/tentang'
     | '/_site/testimoni'
+    | '/_user/checkout'
+    | '/_user/dashboard'
     | '/admin/pesanan'
     | '/admin/produk'
     | '/admin/testimoni'
     | '/_site/'
     | '/admin/'
     | '/_site/produk/$id'
+    | '/_user/dashboard/pesanan'
+    | '/_user/dashboard/profil'
+    | '/_user/dashboard/tracking'
+    | '/_user/dashboard/'
+    | '/_user/dashboard/pesanan/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   SiteRoute: typeof SiteRouteWithChildren
+  UserRoute: typeof UserRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
@@ -228,6 +357,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -235,11 +378,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_user': {
+      id: '/_user'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof UserRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_site': {
@@ -284,6 +441,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPesananRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_user/dashboard': {
+      id: '/_user/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof UserDashboardRouteImport
+      parentRoute: typeof UserRoute
+    }
+    '/_user/checkout': {
+      id: '/_user/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof UserCheckoutRouteImport
+      parentRoute: typeof UserRoute
+    }
     '/_site/testimoni': {
       id: '/_site/testimoni'
       path: '/testimoni'
@@ -326,12 +497,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteFaqRouteImport
       parentRoute: typeof SiteRoute
     }
+    '/_user/dashboard/': {
+      id: '/_user/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof UserDashboardIndexRouteImport
+      parentRoute: typeof UserDashboardRoute
+    }
+    '/_user/dashboard/tracking': {
+      id: '/_user/dashboard/tracking'
+      path: '/tracking'
+      fullPath: '/dashboard/tracking'
+      preLoaderRoute: typeof UserDashboardTrackingRouteImport
+      parentRoute: typeof UserDashboardRoute
+    }
+    '/_user/dashboard/profil': {
+      id: '/_user/dashboard/profil'
+      path: '/profil'
+      fullPath: '/dashboard/profil'
+      preLoaderRoute: typeof UserDashboardProfilRouteImport
+      parentRoute: typeof UserDashboardRoute
+    }
+    '/_user/dashboard/pesanan': {
+      id: '/_user/dashboard/pesanan'
+      path: '/pesanan'
+      fullPath: '/dashboard/pesanan'
+      preLoaderRoute: typeof UserDashboardPesananRouteImport
+      parentRoute: typeof UserDashboardRoute
+    }
     '/_site/produk/$id': {
       id: '/_site/produk/$id'
       path: '/$id'
       fullPath: '/produk/$id'
       preLoaderRoute: typeof SiteProdukIdRouteImport
       parentRoute: typeof SiteProdukRoute
+    }
+    '/_user/dashboard/pesanan/$id': {
+      id: '/_user/dashboard/pesanan/$id'
+      path: '/$id'
+      fullPath: '/dashboard/pesanan/$id'
+      preLoaderRoute: typeof UserDashboardPesananIdRouteImport
+      parentRoute: typeof UserDashboardPesananRoute
     }
   }
 }
@@ -370,6 +576,47 @@ const SiteRouteChildren: SiteRouteChildren = {
 
 const SiteRouteWithChildren = SiteRoute._addFileChildren(SiteRouteChildren)
 
+interface UserDashboardPesananRouteChildren {
+  UserDashboardPesananIdRoute: typeof UserDashboardPesananIdRoute
+}
+
+const UserDashboardPesananRouteChildren: UserDashboardPesananRouteChildren = {
+  UserDashboardPesananIdRoute: UserDashboardPesananIdRoute,
+}
+
+const UserDashboardPesananRouteWithChildren =
+  UserDashboardPesananRoute._addFileChildren(UserDashboardPesananRouteChildren)
+
+interface UserDashboardRouteChildren {
+  UserDashboardPesananRoute: typeof UserDashboardPesananRouteWithChildren
+  UserDashboardProfilRoute: typeof UserDashboardProfilRoute
+  UserDashboardTrackingRoute: typeof UserDashboardTrackingRoute
+  UserDashboardIndexRoute: typeof UserDashboardIndexRoute
+}
+
+const UserDashboardRouteChildren: UserDashboardRouteChildren = {
+  UserDashboardPesananRoute: UserDashboardPesananRouteWithChildren,
+  UserDashboardProfilRoute: UserDashboardProfilRoute,
+  UserDashboardTrackingRoute: UserDashboardTrackingRoute,
+  UserDashboardIndexRoute: UserDashboardIndexRoute,
+}
+
+const UserDashboardRouteWithChildren = UserDashboardRoute._addFileChildren(
+  UserDashboardRouteChildren,
+)
+
+interface UserRouteChildren {
+  UserCheckoutRoute: typeof UserCheckoutRoute
+  UserDashboardRoute: typeof UserDashboardRouteWithChildren
+}
+
+const UserRouteChildren: UserRouteChildren = {
+  UserCheckoutRoute: UserCheckoutRoute,
+  UserDashboardRoute: UserDashboardRouteWithChildren,
+}
+
+const UserRouteWithChildren = UserRoute._addFileChildren(UserRouteChildren)
+
 interface AdminRouteChildren {
   AdminPesananRoute: typeof AdminPesananRoute
   AdminProdukRoute: typeof AdminProdukRoute
@@ -388,20 +635,14 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   SiteRoute: SiteRouteWithChildren,
+  UserRoute: UserRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
