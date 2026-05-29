@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { formatIDR, useCart } from "@/lib/cart";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
+import { Navbar } from "@/components/site/Navbar";
+import { Footer } from "@/components/site/Footer";
 
 export const Route = createFileRoute("/_user/checkout")({
   component: CheckoutPage,
@@ -28,8 +30,9 @@ const schema = z.object({
 });
 
 function CheckoutPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
+  const path = useRouterState({ select: (s) => s.location.pathname });
   const items = useCart((s) => s.items);
   const total = useCart((s) => s.total());
   const count = useCart((s) => s.count());
@@ -40,6 +43,10 @@ function CheckoutPage() {
   const [loading, setLoading] = useState(false);
 
   const belowMin = count < MIN_QTY;
+
+  useEffect(() => {
+    if (!authLoading && !user) nav({ to: "/login", search: { redirect: path } });
+  }, [authLoading, user, nav, path]);
 
   const copy = (v: string, l: string) => { navigator.clipboard.writeText(v); toast.success(`${l} disalin`); };
 
@@ -101,8 +108,12 @@ function CheckoutPage() {
     }
   };
 
+  if (authLoading || !user) return <div className="min-h-screen grid place-items-center text-muted-foreground">Memuat...</div>;
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main className="container mx-auto flex-1 px-4 py-12">
       <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">Checkout</h1>
       <p className="text-muted-foreground mb-6">Total {count} pcs · Minimal pembelian {MIN_QTY} pcs</p>
 
@@ -210,6 +221,8 @@ function CheckoutPage() {
           </Card>
         </div>
       </div>
+      </main>
+      <Footer />
     </div>
   );
 }
