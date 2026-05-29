@@ -7,7 +7,7 @@ import { formatIDR } from "@/lib/cart";
 import { ShoppingBag, Clock, CheckCircle2, Wallet } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/OrderStatusTimeline";
 
-export const Route = createFileRoute("/_user/dashboard/")({
+export const Route = createFileRoute("/_user/dashboard")({
   component: DashboardHome,
 });
 
