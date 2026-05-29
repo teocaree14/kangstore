@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-// User-provided Supabase project (publishable key — safe in client)
 const SUPABASE_URL = "https://umgkqmfisducjekpzxgi.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_m04ZHL9a_goAaMFkn8hvDA_tHE3qRBN";
 
@@ -25,16 +24,49 @@ export type Product = {
   created_at: string;
 };
 
+export type ShippingStatus =
+  | "menunggu_pembayaran"
+  | "diproses"
+  | "dikemas"
+  | "dikirim"
+  | "selesai";
+
 export type Order = {
   id: string;
+  user_id: string | null;
   customer_name: string;
   phone: string;
+  address: string | null;
   product_id: string;
   payment_method: string;
-  payment_status: "menunggu_pembayaran" | "diproses" | "dikirim" | "selesai";
+  payment_status: string;
+  shipping_status: ShippingStatus;
+  tracking_number: string | null;
+  invoice_number: string | null;
+  total_price: number;
   proof_image: string | null;
   created_at: string;
   product?: Product;
+  items?: OrderItem[];
+};
+
+export type OrderItem = {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  product_name: string | null;
+  quantity: number;
+  price: number;
+  product?: Product;
+};
+
+export type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  address: string | null;
+  created_at: string;
 };
 
 export type Testimonial = {

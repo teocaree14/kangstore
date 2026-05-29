@@ -24,7 +24,6 @@ import { Route as SiteStatusRouteImport } from './routes/_site/status'
 import { Route as SiteProdukRouteImport } from './routes/_site/produk'
 import { Route as SiteKontakRouteImport } from './routes/_site/kontak'
 import { Route as SiteFaqRouteImport } from './routes/_site/faq'
-import { Route as SiteCheckoutRouteImport } from './routes/_site/checkout'
 import { Route as SiteProdukIdRouteImport } from './routes/_site/produk.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -101,11 +100,6 @@ const SiteFaqRoute = SiteFaqRouteImport.update({
   path: '/faq',
   getParentRoute: () => SiteRoute,
 } as any)
-const SiteCheckoutRoute = SiteCheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
-  getParentRoute: () => SiteRoute,
-} as any)
 const SiteProdukIdRoute = SiteProdukIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -117,7 +111,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/checkout': typeof SiteCheckoutRoute
   '/faq': typeof SiteFaqRoute
   '/kontak': typeof SiteKontakRoute
   '/produk': typeof SiteProdukRouteWithChildren
@@ -133,7 +126,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/checkout': typeof SiteCheckoutRoute
   '/faq': typeof SiteFaqRoute
   '/kontak': typeof SiteKontakRoute
   '/produk': typeof SiteProdukRouteWithChildren
@@ -153,7 +145,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/_site/checkout': typeof SiteCheckoutRoute
   '/_site/faq': typeof SiteFaqRoute
   '/_site/kontak': typeof SiteKontakRoute
   '/_site/produk': typeof SiteProdukRouteWithChildren
@@ -174,7 +165,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/sitemap.xml'
-    | '/checkout'
     | '/faq'
     | '/kontak'
     | '/produk'
@@ -190,7 +180,6 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/sitemap.xml'
-    | '/checkout'
     | '/faq'
     | '/kontak'
     | '/produk'
@@ -209,7 +198,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/sitemap.xml'
-    | '/_site/checkout'
     | '/_site/faq'
     | '/_site/kontak'
     | '/_site/produk'
@@ -338,13 +326,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteFaqRouteImport
       parentRoute: typeof SiteRoute
     }
-    '/_site/checkout': {
-      id: '/_site/checkout'
-      path: '/checkout'
-      fullPath: '/checkout'
-      preLoaderRoute: typeof SiteCheckoutRouteImport
-      parentRoute: typeof SiteRoute
-    }
     '/_site/produk/$id': {
       id: '/_site/produk/$id'
       path: '/$id'
@@ -368,7 +349,6 @@ const SiteProdukRouteWithChildren = SiteProdukRoute._addFileChildren(
 )
 
 interface SiteRouteChildren {
-  SiteCheckoutRoute: typeof SiteCheckoutRoute
   SiteFaqRoute: typeof SiteFaqRoute
   SiteKontakRoute: typeof SiteKontakRoute
   SiteProdukRoute: typeof SiteProdukRouteWithChildren
@@ -379,7 +359,6 @@ interface SiteRouteChildren {
 }
 
 const SiteRouteChildren: SiteRouteChildren = {
-  SiteCheckoutRoute: SiteCheckoutRoute,
   SiteFaqRoute: SiteFaqRoute,
   SiteKontakRoute: SiteKontakRoute,
   SiteProdukRoute: SiteProdukRouteWithChildren,
@@ -416,3 +395,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
