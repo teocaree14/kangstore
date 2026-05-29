@@ -31,7 +31,7 @@ export function Footer() {
             <li><a href="https://wa.me/6287840395627" target="_blank" rel="noreferrer" className="hover:text-primary">WhatsApp</a></li>
             <li><a href="#" className="hover:text-primary inline-flex items-center gap-1"><Instagram className="h-3 w-3" /> Instagram</a></li>
             <li><a href="#" className="hover:text-primary">TikTok</a></li>
-            <li><Link to="/status" className="hover:text-primary">Cek Status Pesanan</Link></li>
+            <li><Link to="/status" search={{ id: "" }} className="hover:text-primary">Cek Status Pesanan</Link></li>
           </ul>
         </div>
       </div>
