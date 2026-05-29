@@ -23,8 +23,8 @@ function AdminLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
-    if (!loading && !user) nav({ to: "/login" });
-  }, [loading, user, nav]);
+    if (!loading && !user) nav({ to: "/login", search: { redirect: path } });
+  }, [loading, user, nav, path]);
 
   if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Memuat...</div>;
   if (!user) return null;

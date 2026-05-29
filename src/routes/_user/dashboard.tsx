@@ -1,10 +1,13 @@
-import { Outlet, createFileRoute, Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Outlet, createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LayoutDashboard, User as UserIcon, ShoppingBag, Truck, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { Navbar } from "@/components/site/Navbar";
+import { Footer } from "@/components/site/Footer";
 
 export const Route = createFileRoute("/_user/dashboard")({
   component: DashboardLayout,
@@ -18,9 +21,13 @@ const menu = [
 ];
 
 function DashboardLayout() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    if (!loading && !user) nav({ to: "/login", search: { redirect: path } });
+  }, [loading, user, nav, path]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -28,9 +35,13 @@ function DashboardLayout() {
     nav({ to: "/" });
   };
 
+  if (loading || !user) return <div className="min-h-screen grid place-items-center text-muted-foreground">Memuat...</div>;
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="grid md:grid-cols-[260px_1fr] gap-6">
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main className="container mx-auto flex-1 px-4 py-8">
+        <div className="grid md:grid-cols-[260px_1fr] gap-6">
         <aside className="md:sticky md:top-20 md:self-start">
           <Card className="p-4">
             <div className="border-b pb-3 mb-3">
@@ -54,8 +65,10 @@ function DashboardLayout() {
             </Button>
           </Card>
         </aside>
-        <div><Outlet /></div>
-      </div>
+          <div><Outlet /></div>
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }
