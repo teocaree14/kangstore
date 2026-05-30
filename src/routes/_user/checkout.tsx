@@ -64,7 +64,10 @@ function CheckoutPage() {
         const ext = proof.name.split(".").pop();
         const path = `proofs/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("product-images").upload(path, proof);
-        if (upErr) throw upErr;
+        if (upErr) {
+          console.error("[checkout] upload proof error:", upErr);
+          throw new Error(`Upload bukti gagal: ${upErr.message}`);
+        }
         proof_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
       }
 
@@ -84,7 +87,10 @@ function CheckoutPage() {
         invoice_number: invoice,
         total_price: total,
       }).select("id").single();
-      if (error) throw error;
+      if (error) {
+        console.error("[checkout] insert order error:", error);
+        throw new Error(`Order gagal disimpan: ${error.message}${error.hint ? ` (${error.hint})` : ""}`);
+      }
 
       // Insert items
       const { error: itErr } = await supabase.from("order_items").insert(
@@ -96,13 +102,18 @@ function CheckoutPage() {
           price: i.product.price,
         }))
       );
-      if (itErr) throw itErr;
+      if (itErr) {
+        console.error("[checkout] insert order_items error:", itErr);
+        throw new Error(`Item pesanan gagal disimpan: ${itErr.message}`);
+      }
 
       clear();
       toast.success("Pesanan berhasil dibuat!");
       nav({ to: "/dashboard/pesanan/$id", params: { id: order.id } });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal membuat pesanan");
+      const msg = e instanceof Error ? e.message : "Gagal membuat pesanan";
+      console.error("[checkout] submit failed:", e);
+      toast.error(msg, { duration: 8000 });
     } finally {
       setLoading(false);
     }
