@@ -108,7 +108,10 @@ function CheckoutPage() {
       }
 
       clear();
-      toast.success("Pesanan berhasil dibuat!");
+      toast.success("Pesanan berhasil dibuat!", {
+        description: "Silakan cek status pesanan di Dashboard akun Anda.",
+        duration: 6000,
+      });
       nav({ to: "/dashboard/pesanan/$id", params: { id: order.id } });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal membuat pesanan";
