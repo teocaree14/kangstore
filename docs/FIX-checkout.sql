@@ -1,12 +1,15 @@
 -- ============================================================
--- FIX CHECKOUT — VERSI IDEMPOTENT (aman di-run berkali-kali)
+-- FIX CHECKOUT FINAL — VERSI IDEMPOTENT (aman di-run berkali-kali)
 -- ============================================================
 -- Buka: https://supabase.com/dashboard/project/umgkqmfisducjekpzxgi/sql/new
 -- Copy SELURUH file ini, paste, klik RUN.
 -- Kalau ada error "already member of publication" — sudah di-handle.
 -- ============================================================
 
--- 1. ORDERS — tambah kolom
+-- CATATAN: jika Anda sebelumnya mendapat error publication/realtime,
+-- versi ini aman karena hanya menambahkan tabel realtime jika belum terdaftar.
+
+-- 1. ORDERS — tambah kolom yang dibutuhkan checkout
 alter table public.orders add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table public.orders add column if not exists invoice_number text unique;
 alter table public.orders add column if not exists total_price numeric default 0;
@@ -14,6 +17,7 @@ alter table public.orders add column if not exists shipping_status text default 
 alter table public.orders add column if not exists tracking_number text;
 alter table public.orders add column if not exists address text;
 create index if not exists orders_user_id_idx on public.orders(user_id);
+create index if not exists orders_created_at_idx on public.orders(created_at desc);
 
 -- 2. RLS + GRANT orders
 alter table public.orders enable row level security;
@@ -87,22 +91,40 @@ create trigger on_auth_user_created after insert on auth.users
 
 insert into public.profiles (id, email) select id, email from auth.users on conflict (id) do nothing;
 
--- 5. REALTIME (idempotent — abaikan kalau tabel sudah terdaftar)
+-- 5. REALTIME (idempotent — hanya tambah kalau belum terdaftar)
 alter table public.orders replica identity full;
 alter table public.order_items replica identity full;
 alter table public.profiles replica identity full;
 
-do $$ begin
-  alter publication supabase_realtime add table public.orders;
-exception when duplicate_object then null; when others then null; end $$;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'orders'
+  ) then
+    alter publication supabase_realtime add table public.orders;
+  end if;
+end $$;
 
-do $$ begin
-  alter publication supabase_realtime add table public.order_items;
-exception when duplicate_object then null; when others then null; end $$;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'order_items'
+  ) then
+    alter publication supabase_realtime add table public.order_items;
+  end if;
+end $$;
 
-do $$ begin
-  alter publication supabase_realtime add table public.profiles;
-exception when duplicate_object then null; when others then null; end $$;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'profiles'
+  ) then
+    alter publication supabase_realtime add table public.profiles;
+  end if;
+end $$;
 
 -- 6. REFRESH SCHEMA CACHE (WAJIB!)
 notify pgrst, 'reload schema';
