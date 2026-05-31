@@ -66,15 +66,18 @@ function CheckoutPage() {
         const { error: upErr } = await supabase.storage.from("product-images").upload(path, proof);
         if (upErr) {
           console.error("[checkout] upload proof error:", upErr);
-          throw new Error(`Upload bukti gagal: ${upErr.message}`);
+          toast.warning("Bukti transfer belum terupload, pesanan tetap diproses.");
+        } else {
+          proof_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
         }
-        proof_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
       }
 
       const invoice = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      const orderId = crypto.randomUUID();
 
       // Insert order header
-      const { data: order, error } = await supabase.from("orders").insert({
+      const { error } = await supabase.from("orders").insert({
+        id: orderId,
         user_id: user.id,
         customer_name: form.customer_name,
         phone: form.phone,
@@ -86,7 +89,7 @@ function CheckoutPage() {
         proof_image: proof_url,
         invoice_number: invoice,
         total_price: total,
-      }).select("id").single();
+      });
       if (error) {
         console.error("[checkout] insert order error:", error);
         throw new Error(`Order gagal disimpan: ${error.message}${error.hint ? ` (${error.hint})` : ""}`);
@@ -95,7 +98,7 @@ function CheckoutPage() {
       // Insert items
       const { error: itErr } = await supabase.from("order_items").insert(
         items.map((i) => ({
-          order_id: order.id,
+          order_id: orderId,
           product_id: i.product.id,
           product_name: i.product.name,
           quantity: i.qty,
@@ -104,7 +107,7 @@ function CheckoutPage() {
       );
       if (itErr) {
         console.error("[checkout] insert order_items error:", itErr);
-        throw new Error(`Item pesanan gagal disimpan: ${itErr.message}`);
+        toast.warning("Pesanan berhasil, tetapi detail item belum tersimpan lengkap.");
       }
 
       clear();
@@ -112,7 +115,7 @@ function CheckoutPage() {
         description: "Silakan cek status pesanan di Dashboard akun Anda.",
         duration: 6000,
       });
-      nav({ to: "/dashboard/pesanan/$id", params: { id: order.id } });
+      nav({ to: "/dashboard/pesanan/$id", params: { id: orderId } });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal membuat pesanan";
       console.error("[checkout] submit failed:", e);
