@@ -2,11 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import {
   deleteProductAsAdmin,
+  listOrdersAsAdmin,
   listProductsAsAdmin,
   requireAdmin,
   saveProductAsAdmin,
+  updateOrderAsAdmin,
   uploadProductImageAsAdmin,
   type SaveProductInput,
+  type UpdateOrderInput,
   type UploadProductImageInput,
 } from "./admin.server";
 
@@ -39,4 +42,16 @@ export const uploadAdminProductImage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin(getRequestHeader("authorization") ?? getRequestHeader("Authorization"));
     return uploadProductImageAsAdmin(data);
+  });
+
+export const getAdminOrders = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin(getRequestHeader("authorization") ?? getRequestHeader("Authorization"));
+  return listOrdersAsAdmin();
+});
+
+export const updateAdminOrder = createServerFn({ method: "POST" })
+  .inputValidator((data: UpdateOrderInput) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin(getRequestHeader("authorization") ?? getRequestHeader("Authorization"));
+    return updateOrderAsAdmin(data);
   });
