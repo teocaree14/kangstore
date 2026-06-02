@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase, type Order, type ShippingStatus } from "@/lib/supabase";
+import { getAdminOrders, updateAdminOrder } from "@/lib/admin.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,12 +23,12 @@ const labels: Record<string, string> = {
 
 function AdminPesanan() {
   const qc = useQueryClient();
+  const fetchOrders = useServerFn(getAdminOrders);
+  const updateOrder = useServerFn(updateAdminOrder);
+
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "orders"],
-    queryFn: async () => {
-      const { data } = await supabase.from("orders").select("*, product:products(*), items:order_items(*)").order("created_at", { ascending: false });
-      return (data ?? []) as Order[];
-    },
+    queryFn: () => fetchOrders(),
   });
 
   useEffect(() => {
@@ -37,9 +39,23 @@ function AdminPesanan() {
   }, [qc]);
 
   const updateShipping = async (id: string, shipping_status: string) => {
-    const { error } = await supabase.from("orders").update({ shipping_status }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Status pengiriman diupdate");
+    try {
+      await updateOrder({ data: { id, shipping_status } });
+      toast.success("Status pengiriman diupdate");
+      qc.invalidateQueries({ queryKey: ["admin", "orders"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal update status");
+    }
+  };
+
+  const saveResi = async (id: string, tracking_number: string) => {
+    try {
+      await updateOrder({ data: { id, tracking_number: tracking_number || null } });
+      toast.success("Resi tersimpan");
+      qc.invalidateQueries({ queryKey: ["admin", "orders"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal simpan resi");
+    }
   };
 
   return (
@@ -62,7 +78,7 @@ function AdminPesanan() {
             <tbody>
               {isLoading && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Memuat...</td></tr>}
               {!isLoading && !data?.length && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Belum ada pesanan</td></tr>}
-              {data?.map((o) => <OrderRow key={o.id} o={o} onUpdateStatus={updateShipping} />)}
+              {data?.map((o) => <OrderRow key={o.id} o={o} onUpdateStatus={updateShipping} onSaveResi={saveResi} />)}
             </tbody>
           </table>
         </div>
@@ -71,12 +87,12 @@ function AdminPesanan() {
   );
 }
 
-function OrderRow({ o, onUpdateStatus }: { o: Order; onUpdateStatus: (id: string, s: string) => void }) {
+function OrderRow({ o, onUpdateStatus, onSaveResi }: { o: Order; onUpdateStatus: (id: string, s: string) => void; onSaveResi: (id: string, r: string) => void }) {
   const [resi, setResi] = useState(o.tracking_number ?? "");
-  const saveResi = async () => {
-    const { error } = await supabase.from("orders").update({ tracking_number: resi || null }).eq("id", o.id);
-    if (error) return toast.error(error.message);
-    toast.success("Resi tersimpan");
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try { await onSaveResi(o.id, resi); } finally { setSaving(false); }
   };
   return (
     <tr className="border-t">
@@ -94,7 +110,7 @@ function OrderRow({ o, onUpdateStatus }: { o: Order; onUpdateStatus: (id: string
       <td className="p-3">
         <div className="flex gap-1">
           <Input value={resi} onChange={(e) => setResi(e.target.value)} className="h-8 w-32" placeholder="Resi" />
-          <Button size="sm" variant="outline" onClick={saveResi} className="h-8">OK</Button>
+          <Button size="sm" variant="outline" onClick={save} disabled={saving} className="h-8">{saving ? "..." : "OK"}</Button>
         </div>
       </td>
       <td className="p-3 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("id-ID")}</td>
