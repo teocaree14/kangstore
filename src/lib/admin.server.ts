@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Product } from "./supabase";
+import type { Product, Order } from "./supabase";
 
 const SUPABASE_URL = "https://umgkqmfisducjekpzxgi.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_m04ZHL9a_goAaMFkn8hvDA_tHE3qRBN";
@@ -18,6 +18,7 @@ type ProductPayload = {
 
 export type SaveProductInput = ProductPayload & { id?: string };
 export type UploadProductImageInput = { fileName: string; contentType: string; base64: string };
+export type UpdateOrderInput = { id: string; tracking_number?: string | null; shipping_status?: string };
 
 function getServiceRoleClient() {
   const key = process.env.LUCKY_STORE_SUPABASE_SERVICE_ROLE_KEY;
@@ -102,4 +103,29 @@ export async function uploadProductImageAsAdmin(input: UploadProductImageInput) 
 
   const { data } = admin.storage.from("product-images").getPublicUrl(path);
   return { publicUrl: data.publicUrl };
+}
+
+export async function listOrdersAsAdmin() {
+  const { data, error } = await getServiceRoleClient()
+    .from("orders")
+    .select("*, product:products(*), items:order_items(*, product:products(*))")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Order[];
+}
+
+export async function updateOrderAsAdmin(input: UpdateOrderInput) {
+  const patch: Record<string, unknown> = {};
+  if (input.tracking_number !== undefined) patch.tracking_number = input.tracking_number;
+  if (input.shipping_status !== undefined) patch.shipping_status = input.shipping_status;
+  if (Object.keys(patch).length === 0) return { ok: true };
+
+  const { data, error } = await getServiceRoleClient()
+    .from("orders")
+    .update(patch)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return { ok: true, order: data as Order };
 }
