@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Copy, Upload, QrCode, AlertTriangle, Loader2 } from "lucide-react";
+import { Copy, Upload, QrCode, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatIDR, useCart } from "@/lib/cart";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
+import { createQrisOrder, getOrderPaymentStatus } from "@/lib/midtrans.functions";
 
 export const Route = createFileRoute("/_user/checkout")({
   component: CheckoutPage,
@@ -26,7 +28,7 @@ const schema = z.object({
   customer_name: z.string().trim().min(2, "Nama minimal 2 karakter").max(100),
   phone: z.string().trim().regex(/^[0-9+]{8,20}$/, "Nomor HP tidak valid"),
   address: z.string().trim().min(5, "Alamat minimal 5 karakter").max(500),
-  payment_method: z.enum(["BCA", "DANA"]),
+  payment_method: z.enum(["QRIS", "BCA", "DANA"]),
 });
 
 function CheckoutPage() {

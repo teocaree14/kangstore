@@ -35,6 +35,7 @@ import { Route as UserDashboardTrackingRouteImport } from './routes/_user/dashbo
 import { Route as UserDashboardProfilRouteImport } from './routes/_user/dashboard/profil'
 import { Route as UserDashboardPesananRouteImport } from './routes/_user/dashboard/pesanan'
 import { Route as SiteProdukIdRouteImport } from './routes/_site/produk.$id'
+import { Route as ApiPublicMidtransNotificationRouteImport } from './routes/api/public/midtrans/notification'
 import { Route as UserDashboardPesananIdRouteImport } from './routes/_user/dashboard/pesanan.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -165,6 +166,12 @@ const SiteProdukIdRoute = SiteProdukIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => SiteProdukRoute,
 } as any)
+const ApiPublicMidtransNotificationRoute =
+  ApiPublicMidtransNotificationRouteImport.update({
+    id: '/api/public/midtrans/notification',
+    path: '/api/public/midtrans/notification',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const UserDashboardPesananIdRoute = UserDashboardPesananIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -197,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/tracking': typeof UserDashboardTrackingRoute
   '/dashboard/': typeof UserDashboardIndexRoute
   '/dashboard/pesanan/$id': typeof UserDashboardPesananIdRoute
+  '/api/public/midtrans/notification': typeof ApiPublicMidtransNotificationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof SiteIndexRoute
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/dashboard/tracking': typeof UserDashboardTrackingRoute
   '/dashboard': typeof UserDashboardIndexRoute
   '/dashboard/pesanan/$id': typeof UserDashboardPesananIdRoute
+  '/api/public/midtrans/notification': typeof ApiPublicMidtransNotificationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -252,6 +261,7 @@ export interface FileRoutesById {
   '/_user/dashboard/tracking': typeof UserDashboardTrackingRoute
   '/_user/dashboard/': typeof UserDashboardIndexRoute
   '/_user/dashboard/pesanan/$id': typeof UserDashboardPesananIdRoute
+  '/api/public/midtrans/notification': typeof ApiPublicMidtransNotificationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/dashboard/tracking'
     | '/dashboard/'
     | '/dashboard/pesanan/$id'
+    | '/api/public/midtrans/notification'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/dashboard/tracking'
     | '/dashboard'
     | '/dashboard/pesanan/$id'
+    | '/api/public/midtrans/notification'
   id:
     | '__root__'
     | '/_site'
@@ -335,6 +347,7 @@ export interface FileRouteTypes {
     | '/_user/dashboard/tracking'
     | '/_user/dashboard/'
     | '/_user/dashboard/pesanan/$id'
+    | '/api/public/midtrans/notification'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -346,6 +359,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiPublicMidtransNotificationRoute: typeof ApiPublicMidtransNotificationRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -532,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteProdukIdRouteImport
       parentRoute: typeof SiteProdukRoute
     }
+    '/api/public/midtrans/notification': {
+      id: '/api/public/midtrans/notification'
+      path: '/api/public/midtrans/notification'
+      fullPath: '/api/public/midtrans/notification'
+      preLoaderRoute: typeof ApiPublicMidtransNotificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_user/dashboard/pesanan/$id': {
       id: '/_user/dashboard/pesanan/$id'
       path: '/$id'
@@ -642,6 +663,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiPublicMidtransNotificationRoute: ApiPublicMidtransNotificationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
