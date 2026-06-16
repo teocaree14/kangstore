@@ -40,9 +40,14 @@ function CheckoutPage() {
   const count = useCart((s) => s.count());
   const setQty = useCart((s) => s.setQty);
   const clear = useCart((s) => s.clear);
-  const [form, setForm] = useState({ customer_name: "", phone: "", address: "", payment_method: "BCA" as "BCA" | "DANA" });
+  const [form, setForm] = useState({ customer_name: "", phone: "", address: "", payment_method: "QRIS" as "QRIS" | "BCA" | "DANA" });
   const [proof, setProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [qris, setQris] = useState<{ orderId: string; qrUrl: string | null; qrString: string | null; total: number; invoice: string } | null>(null);
+  const [qrisStatus, setQrisStatus] = useState<"pending" | "paid" | "failed">("pending");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const createQris = useServerFn(createQrisOrder);
+  const checkStatus = useServerFn(getOrderPaymentStatus);
 
   const belowMin = count < MIN_QTY;
 
@@ -61,23 +66,55 @@ function CheckoutPage() {
 
     setLoading(true);
     try {
+      // QRIS otomatis via Midtrans
+      if (form.payment_method === "QRIS") {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess.session?.access_token;
+        if (!token) throw new Error("Sesi tidak valid, silakan login ulang.");
+        const res = await createQris({
+          data: {
+            authToken: token,
+            customer_name: form.customer_name,
+            phone: form.phone,
+            address: form.address,
+            total,
+            items: items.map((i) => ({
+              product_id: i.product.id,
+              product_name: i.product.name,
+              price: i.product.price,
+              quantity: i.qty,
+            })),
+          },
+        });
+        setQris({
+          orderId: res.order_id,
+          qrUrl: res.qr_url ?? null,
+          qrString: res.qr_string ?? null,
+          total: res.total,
+          invoice: res.invoice,
+        });
+        setQrisStatus("pending");
+        toast.success("QRIS siap dibayar. Scan untuk membayar.");
+        return;
+      }
+
+      // Manual transfer (BCA/DANA)
       let proof_url: string | null = null;
       if (proof) {
         const ext = proof.name.split(".").pop();
-        const path = `proofs/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("product-images").upload(path, proof);
+        const pPath = `proofs/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("product-images").upload(pPath, proof);
         if (upErr) {
           console.error("[checkout] upload proof error:", upErr);
           toast.warning("Bukti transfer belum terupload, pesanan tetap diproses.");
         } else {
-          proof_url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+          proof_url = supabase.storage.from("product-images").getPublicUrl(pPath).data.publicUrl;
         }
       }
 
       const invoice = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
       const orderId = crypto.randomUUID();
 
-      // Insert order header
       const { error } = await supabase.from("orders").insert({
         id: orderId,
         user_id: user.id,
@@ -97,7 +134,6 @@ function CheckoutPage() {
         throw new Error(`Order gagal disimpan: ${error.message}${error.hint ? ` (${error.hint})` : ""}`);
       }
 
-      // Insert items
       const { error: itErr } = await supabase.from("order_items").insert(
         items.map((i) => ({
           order_id: orderId,
@@ -126,6 +162,33 @@ function CheckoutPage() {
       setLoading(false);
     }
   };
+
+  // Poll QRIS payment status
+  useEffect(() => {
+    if (!qris || qrisStatus !== "pending") return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const row = await checkStatus({ data: { orderId: qris.orderId } });
+        if (row.payment_status === "lunas") {
+          setQrisStatus("paid");
+          clear();
+          toast.success("Pembayaran berhasil!", {
+            description: "Pesanan Anda telah masuk. Cek dashboard untuk detail.",
+            duration: 6000,
+          });
+          setTimeout(() => nav({ to: "/dashboard/pesanan/$id", params: { id: qris.orderId } }), 1500);
+        } else if (row.payment_status === "gagal") {
+          setQrisStatus("failed");
+          toast.error("Pembayaran gagal atau kedaluwarsa.");
+        }
+      } catch (e) {
+        console.error("[qris poll]", e);
+      }
+    }, 3000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [qris, qrisStatus, checkStatus, clear, nav]);
 
   if (authLoading || !user) return <div className="min-h-screen grid place-items-center text-muted-foreground">Memuat...</div>;
 
