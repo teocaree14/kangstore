@@ -240,51 +240,81 @@ function CheckoutPage() {
 
           <Card className="p-6 space-y-4">
             <h2 className="font-semibold text-lg">Metode Pembayaran</h2>
-            <RadioGroup value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v as "BCA" | "DANA" })} className="grid sm:grid-cols-2 gap-3">
+            <RadioGroup value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v as "QRIS" | "BCA" | "DANA" })} className="grid sm:grid-cols-3 gap-3">
+              <Label className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer ${form.payment_method === "QRIS" ? "border-primary bg-primary/5" : ""}`}>
+                <RadioGroupItem value="QRIS" className="mt-1" />
+                <div><p className="font-semibold">QRIS</p><p className="text-xs text-muted-foreground">Otomatis · GoPay/OVO/Dana/BCA</p></div>
+              </Label>
               <Label className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer ${form.payment_method === "BCA" ? "border-primary bg-primary/5" : ""}`}>
                 <RadioGroupItem value="BCA" className="mt-1" />
-                <div><p className="font-semibold">Transfer Bank BCA</p><p className="text-xs text-muted-foreground">a/n Lucky Hendrawan Trenadi</p></div>
+                <div><p className="font-semibold">Transfer BCA</p><p className="text-xs text-muted-foreground">Manual</p></div>
               </Label>
               <Label className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer ${form.payment_method === "DANA" ? "border-primary bg-primary/5" : ""}`}>
                 <RadioGroupItem value="DANA" className="mt-1" />
-                <div><p className="font-semibold">DANA</p><p className="text-xs text-muted-foreground">a/n Ipatul Hasanah</p></div>
+                <div><p className="font-semibold">DANA</p><p className="text-xs text-muted-foreground">Manual</p></div>
               </Label>
             </RadioGroup>
 
-            <div className="rounded-xl bg-muted/50 p-4 space-y-3">
-              {form.payment_method === "BCA" ? (
-                <>
-                  <div className="flex justify-between items-center">
-                    <div><p className="text-xs text-muted-foreground">Bank BCA</p><p className="font-mono text-lg font-bold">4070383069</p></div>
-                    <Button size="sm" variant="outline" onClick={() => copy("4070383069", "Nomor rekening")}><Copy className="h-3 w-3 mr-1" /> Salin</Button>
+            {form.payment_method === "QRIS" ? (
+              <div className="rounded-xl bg-muted/50 p-4 space-y-3">
+                {qris ? (
+                  <div className="flex flex-col items-center text-center gap-3">
+                    {qrisStatus === "paid" ? (
+                      <div className="flex flex-col items-center gap-2 py-6">
+                        <CheckCircle2 className="h-16 w-16 text-green-600" />
+                        <p className="font-semibold text-lg">Pembayaran Berhasil!</p>
+                        <p className="text-sm text-muted-foreground">Mengalihkan ke dashboard...</p>
+                      </div>
+                    ) : (
+                      <>
+                        {qris.qrUrl ? (
+                          <img src={qris.qrUrl} alt="QRIS" className="h-64 w-64 rounded-lg border bg-white p-2" />
+                        ) : (
+                          <div className="h-64 w-64 grid place-items-center rounded-lg bg-background border"><QrCode className="h-20 w-20 text-muted-foreground" /></div>
+                        )}
+                        <p className="text-sm">Scan QR di atas dengan aplikasi e-wallet/bank Anda.</p>
+                        <p className="text-xs text-muted-foreground">Invoice: <strong>{qris.invoice}</strong> · Total: <strong>{formatIDR(qris.total)}</strong></p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Menunggu pembayaran...
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <p className="text-sm">a/n <strong>Lucky Hendrawan Trenadi</strong></p>
-                </>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center">
-                    <div><p className="text-xs text-muted-foreground">DANA</p><p className="font-mono text-lg font-bold">087840395627</p></div>
-                    <Button size="sm" variant="outline" onClick={() => copy("087840395627", "Nomor DANA")}><Copy className="h-3 w-3 mr-1" /> Salin</Button>
-                  </div>
-                  <p className="text-sm">a/n <strong>Ipatul Hasanah</strong></p>
-                </>
-              )}
-              <div className="flex items-center gap-3 pt-2">
-                <div className="h-20 w-20 grid place-items-center rounded-lg bg-background border border-dashed">
-                  <QrCode className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <p className="text-xs text-muted-foreground">QR pembayaran tersedia setelah konfirmasi.</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">QR akan muncul setelah Anda menekan tombol <strong>Bayar Sekarang</strong>. Sistem akan otomatis mendeteksi pembayaran Anda.</p>
+                )}
               </div>
-            </div>
-
-            <div>
-              <Label>Upload Bukti Transfer (opsional)</Label>
-              <label className="mt-1 block cursor-pointer rounded-xl border-2 border-dashed p-4 hover:bg-muted/30 transition-colors text-center">
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setProof(e.target.files?.[0] ?? null)} />
-                <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
-                <p className="text-sm mt-1">{proof ? proof.name : "Klik untuk upload bukti transfer"}</p>
-              </label>
-            </div>
+            ) : (
+              <>
+                <div className="rounded-xl bg-muted/50 p-4 space-y-3">
+                  {form.payment_method === "BCA" ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <div><p className="text-xs text-muted-foreground">Bank BCA</p><p className="font-mono text-lg font-bold">4070383069</p></div>
+                        <Button size="sm" variant="outline" onClick={() => copy("4070383069", "Nomor rekening")}><Copy className="h-3 w-3 mr-1" /> Salin</Button>
+                      </div>
+                      <p className="text-sm">a/n <strong>Lucky Hendrawan Trenadi</strong></p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <div><p className="text-xs text-muted-foreground">DANA</p><p className="font-mono text-lg font-bold">087840395627</p></div>
+                        <Button size="sm" variant="outline" onClick={() => copy("087840395627", "Nomor DANA")}><Copy className="h-3 w-3 mr-1" /> Salin</Button>
+                      </div>
+                      <p className="text-sm">a/n <strong>Ipatul Hasanah</strong></p>
+                    </>
+                  )}
+                </div>
+                <div>
+                  <Label>Upload Bukti Transfer (opsional)</Label>
+                  <label className="mt-1 block cursor-pointer rounded-xl border-2 border-dashed p-4 hover:bg-muted/30 transition-colors text-center">
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setProof(e.target.files?.[0] ?? null)} />
+                    <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
+                    <p className="text-sm mt-1">{proof ? proof.name : "Klik untuk upload bukti transfer"}</p>
+                  </label>
+                </div>
+              </>
+            )}
           </Card>
         </div>
 
@@ -296,8 +326,8 @@ function CheckoutPage() {
             <div className="border-t pt-3 flex justify-between font-bold">
               <span>Total</span><span className="text-gradient">{formatIDR(total)}</span>
             </div>
-            <Button onClick={submit} disabled={loading || !items.length || belowMin} className="w-full bg-gradient-primary shadow-glow" size="lg">
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...</> : belowMin ? `Minimal ${MIN_QTY} pcs` : "Saya Sudah Bayar"}
+            <Button onClick={submit} disabled={loading || !items.length || belowMin || (form.payment_method === "QRIS" && !!qris && qrisStatus === "pending")} className="w-full bg-gradient-primary shadow-glow" size="lg">
+              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...</> : belowMin ? `Minimal ${MIN_QTY} pcs` : form.payment_method === "QRIS" ? (qris ? "Menunggu Pembayaran" : "Bayar Sekarang") : "Saya Sudah Bayar"}
             </Button>
             {belowMin && <p className="text-xs text-destructive text-center">Tombol aktif setelah keranjang ≥ {MIN_QTY} pcs.</p>}
           </Card>
