@@ -36,12 +36,16 @@ export async function chargeQris(params: {
   phone: string;
 }) {
   const body = {
-    payment_type: "qris",
+    payment_type: "gopay",
     transaction_details: {
       order_id: params.orderId,
       gross_amount: Math.round(params.grossAmount),
     },
-    // acquirer dihilangkan agar Midtrans memilih channel QRIS yang aktif di akun Anda
+    // QRIS Dinamis GoPay di Core API dibuat melalui payment_type "gopay".
+    // Response tetap menyediakan action "generate-qr-code" yang bisa discan semua aplikasi QRIS.
+    gopay: {
+      enable_callback: false,
+    },
     customer_details: {
       first_name: params.customerName,
       phone: params.phone,
@@ -64,9 +68,12 @@ export async function chargeQris(params: {
     transaction_status?: string;
     qr_string?: string;
     actions?: Array<{ name: string; url: string; method: string }>;
+    validation_messages?: string[];
   };
   if (!res.ok || (json.status_code && !["200", "201"].includes(json.status_code))) {
-    throw new Error(json.status_message || `Midtrans error (${res.status})`);
+    console.error("[midtrans charge] failed:", JSON.stringify(json));
+    const detail = json.validation_messages?.length ? `: ${json.validation_messages.join(", ")}` : "";
+    throw new Error((json.status_message || `Midtrans error (${res.status})`) + detail);
   }
   const qrUrl = json.actions?.find((a) => a.name === "generate-qr-code")?.url ?? null;
   return {
