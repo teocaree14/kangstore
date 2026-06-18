@@ -41,7 +41,7 @@ export async function chargeQris(params: {
       order_id: params.orderId,
       gross_amount: Math.round(params.grossAmount),
     },
-    qris: { acquirer: "gopay" },
+    // acquirer dihilangkan agar Midtrans memilih channel QRIS yang aktif di akun Anda
     customer_details: {
       first_name: params.customerName,
       phone: params.phone,
