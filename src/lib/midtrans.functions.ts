@@ -36,6 +36,21 @@ export const createQrisOrder = createServerFn({ method: "POST" })
       .slice(2, 7)
       .toUpperCase()}`;
 
+    // 1) Charge Midtrans FIRST. If it fails, no order row is created → user can retry cleanly.
+    let charge;
+    try {
+      charge = await chargeQris({
+        orderId,
+        grossAmount: data.total,
+        customerName: data.customer_name,
+        phone: data.phone,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal membuat QRIS";
+      throw new Error(msg);
+    }
+
+    // 2) Only after a successful charge, persist the order with QR data.
     const admin = getServiceClient();
     const { error: insErr } = await admin.from("orders").insert({
       id: orderId,
@@ -49,6 +64,10 @@ export const createQrisOrder = createServerFn({ method: "POST" })
       shipping_status: "menunggu_pembayaran",
       invoice_number: invoice,
       total_price: data.total,
+      midtrans_order_id: orderId,
+      midtrans_transaction_id: charge.transaction_id,
+      qr_string: charge.qr_string,
+      qr_url: charge.qr_url,
     });
     if (insErr) throw new Error(`Order gagal disimpan: ${insErr.message}`);
 
@@ -63,33 +82,13 @@ export const createQrisOrder = createServerFn({ method: "POST" })
     );
     if (itErr) console.error("[qris] order_items insert error:", itErr);
 
-    try {
-      const charge = await chargeQris({
-        orderId,
-        grossAmount: data.total,
-        customerName: data.customer_name,
-        phone: data.phone,
-      });
-      await admin
-        .from("orders")
-        .update({
-          midtrans_order_id: orderId,
-          midtrans_transaction_id: charge.transaction_id,
-          qr_string: charge.qr_string,
-          qr_url: charge.qr_url,
-        })
-        .eq("id", orderId);
-      return {
-        order_id: orderId,
-        invoice,
-        qr_string: charge.qr_string,
-        qr_url: charge.qr_url,
-        total: data.total,
-      };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Gagal membuat QRIS";
-      throw new Error(msg);
-    }
+    return {
+      order_id: orderId,
+      invoice,
+      qr_string: charge.qr_string,
+      qr_url: charge.qr_url,
+      total: data.total,
+    };
   });
 
 export const getOrderPaymentStatus = createServerFn({ method: "GET" })
