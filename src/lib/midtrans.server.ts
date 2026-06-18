@@ -10,6 +10,9 @@ export function getMidtransServerKey() {
 }
 
 export function isMidtransProduction() {
+  const key = getMidtransServerKey();
+  if (key.startsWith("SB-Mid-server-")) return false;
+  if (key.startsWith("Mid-server-")) return true;
   return (process.env.MIDTRANS_IS_PRODUCTION ?? "true").toLowerCase() === "true";
 }
 
