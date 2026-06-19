@@ -131,9 +131,9 @@ function DetailPage() {
         {order.payment_method === "QRIS" && canCancel && (
           <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/50 p-4 text-center">
             {qrSrc && isSnapPayment ? (
-              <div className="w-full max-w-md space-y-3">
-                <iframe src={qrSrc} title="Pembayaran QRIS Midtrans" className="h-[520px] w-full rounded-lg border bg-background" />
-                <Button type="button" variant="outline" onClick={() => window.open(qrSrc, "_blank", "noopener,noreferrer")}>Buka Halaman Pembayaran</Button>
+              <div className="w-full max-w-md rounded-lg border bg-background p-4 space-y-3">
+                <p className="text-sm font-medium">Pembayaran QRIS tersedia di halaman Midtrans.</p>
+                <Button type="button" variant="outline" onClick={() => window.open(qrSrc, "_blank", "noopener,noreferrer")}>Buka Pembayaran QRIS</Button>
               </div>
             ) : qrSrc ? (
               <img src={qrSrc} alt="QRIS pembayaran" className="h-64 w-64 rounded-lg border bg-white p-2" />
