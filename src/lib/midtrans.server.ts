@@ -81,10 +81,11 @@ export async function chargeQris(params: {
     validation_messages?: string[];
   };
   if (!res.ok || (json.status_code && !["200", "201"].includes(json.status_code))) {
-    console.error("[midtrans charge] failed:", JSON.stringify(json));
     if (json.status_message?.toLowerCase().includes("payment channel is not activated")) {
+      console.info("[midtrans charge] Core QRIS inactive, using Snap QRIS fallback.");
       return createSnapQrisTransaction(params);
     }
+    console.error("[midtrans charge] failed:", JSON.stringify(json));
     const detail = json.validation_messages?.length ? `: ${json.validation_messages.join(", ")}` : "";
     throw new Error((json.status_message || `Midtrans error (${res.status})`) + detail);
   }
