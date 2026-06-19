@@ -99,6 +99,7 @@ export async function chargeQris(params: {
     qr_string: json.qr_string ?? null,
     qr_url: qrUrl,
     qr_image_data_url: qrImageDataUrl,
+    snap_token: null,
     transaction_status: json.transaction_status ?? "pending",
   };
 }
@@ -141,6 +142,7 @@ async function createSnapQrisTransaction(params: {
     qr_string: null,
     qr_url: json.redirect_url,
     qr_image_data_url: null,
+    snap_token: json.token,
     transaction_status: "pending",
   };
 }
