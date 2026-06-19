@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Copy, Upload, QrCode, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
+import { Copy, Upload, QrCode, AlertTriangle, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { formatIDR, useCart } from "@/lib/cart";
 import { supabase } from "@/lib/supabase";
@@ -17,6 +17,36 @@ import { useAuth } from "@/lib/auth";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { createQrisOrder, getOrderPaymentStatus } from "@/lib/midtrans.functions";
+
+declare global {
+  interface Window {
+    snap?: {
+      pay: (token: string, options?: Record<string, unknown>) => void;
+    };
+  }
+}
+
+const MIDTRANS_CLIENT_KEY = "Mid-client-JzzMAf3oHGoDyRWI";
+const MIDTRANS_SNAP_SCRIPT_URL = "https://app.midtrans.com/snap/snap.js";
+
+function loadMidtransSnap() {
+  if (window.snap) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById("midtrans-snap-js") as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Snap Midtrans gagal dimuat.")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "midtrans-snap-js";
+    script.src = MIDTRANS_SNAP_SCRIPT_URL;
+    script.setAttribute("data-client-key", MIDTRANS_CLIENT_KEY);
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Snap Midtrans gagal dimuat."));
+    document.body.appendChild(script);
+  });
+}
 
 export const Route = createFileRoute("/_user/checkout")({
   component: CheckoutPage,
@@ -43,19 +73,41 @@ function CheckoutPage() {
   const [form, setForm] = useState({ customer_name: "", phone: "", address: "", payment_method: "QRIS" as "QRIS" | "BCA" | "DANA" });
   const [proof, setProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [qris, setQris] = useState<{ orderId: string; qrUrl: string | null; qrString: string | null; total: number; invoice: string } | null>(null);
+  const [qris, setQris] = useState<{ orderId: string; qrUrl: string | null; qrString: string | null; snapToken?: string | null; total: number; invoice: string } | null>(null);
   const [qrisStatus, setQrisStatus] = useState<"pending" | "paid" | "failed">("pending");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createQris = useServerFn(createQrisOrder);
   const checkStatus = useServerFn(getOrderPaymentStatus);
 
   const belowMin = count < MIN_QTY;
+  const qrisIsSnap = !!qris?.qrUrl && !qris.qrUrl.startsWith("data:image");
 
   useEffect(() => {
     if (!authLoading && !user) nav({ to: "/login", search: { redirect: path } });
   }, [authLoading, user, nav, path]);
 
   const copy = (v: string, l: string) => { navigator.clipboard.writeText(v); toast.success(`${l} disalin`); };
+
+  const openSnapPayment = async (token: string, redirectUrl: string | null, orderId: string) => {
+    try {
+      await loadMidtransSnap();
+      window.snap?.pay(token, {
+        onSuccess: () => {
+          clear();
+          nav({ to: "/dashboard/pesanan/$id", params: { id: orderId } });
+        },
+        onPending: () => toast.info("QRIS menunggu pembayaran."),
+        onClose: () => toast.info("Pembayaran belum selesai. Anda bisa melanjutkan dari riwayat pesanan."),
+        onError: () => {
+          if (redirectUrl) window.location.href = redirectUrl;
+        },
+      });
+    } catch (e) {
+      console.error("[midtrans snap] open failed:", e);
+      if (redirectUrl) window.location.href = redirectUrl;
+      else toast.error(e instanceof Error ? e.message : "Gagal membuka pembayaran QRIS.");
+    }
+  };
 
   const submit = async () => {
     if (!user) return toast.error("Anda harus login");
@@ -90,11 +142,13 @@ function CheckoutPage() {
           orderId: res.order_id,
           qrUrl: res.qr_url ?? null,
           qrString: res.qr_string ?? null,
+          snapToken: res.snap_token ?? null,
           total: res.total,
           invoice: res.invoice,
         });
         setQrisStatus("pending");
         toast.success("QRIS siap dibayar. Scan untuk membayar.");
+        if (res.snap_token) void openSnapPayment(res.snap_token, res.qr_url ?? null, res.order_id);
         return;
       }
 
@@ -265,14 +319,28 @@ function CheckoutPage() {
                         <p className="font-semibold text-lg">Pembayaran Berhasil!</p>
                         <p className="text-sm text-muted-foreground">Mengalihkan ke dashboard...</p>
                       </div>
+                    ) : qrisStatus === "failed" ? (
+                      <div className="flex flex-col items-center gap-2 py-6">
+                        <XCircle className="h-16 w-16 text-destructive" />
+                        <p className="font-semibold text-lg">Pembayaran Gagal</p>
+                        <p className="text-sm text-muted-foreground">Silakan tekan tombol ringkasan untuk membuat QR baru.</p>
+                      </div>
                     ) : (
                       <>
-                        {qris.qrUrl ? (
+                        {qris.qrUrl && qrisIsSnap ? (
+                          <div className="w-full max-w-md rounded-lg border bg-background p-4 space-y-3">
+                            <QrCode className="h-16 w-16 mx-auto text-primary" />
+                            <p className="text-sm font-medium">Pembayaran QRIS dibuka melalui Midtrans.</p>
+                            <Button type="button" variant="outline" onClick={() => qris.snapToken ? openSnapPayment(qris.snapToken, qris.qrUrl, qris.orderId) : window.open(qris.qrUrl!, "_blank", "noopener,noreferrer")}>
+                              Buka Pembayaran QRIS
+                            </Button>
+                          </div>
+                        ) : qris.qrUrl ? (
                           <img src={qris.qrUrl} alt="QRIS" className="h-64 w-64 rounded-lg border bg-white p-2" />
                         ) : (
-                          <div className="h-64 w-64 grid place-items-center rounded-lg bg-background border"><QrCode className="h-20 w-20 text-muted-foreground" /></div>
+                          <div className="h-64 w-64 grid place-items-center rounded-lg bg-background border text-center p-4"><div><QrCode className="h-20 w-20 text-muted-foreground mx-auto mb-2" /><p className="text-xs text-muted-foreground">QR belum tersedia. Coba buat ulang pesanan.</p></div></div>
                         )}
-                        <p className="text-sm">Scan QR di atas dengan aplikasi e-wallet/bank Anda.</p>
+                        <p className="text-sm">{qrisIsSnap ? "Pilih GoPay QRIS lalu scan QRIS dari halaman Midtrans." : "Scan QR di atas dengan aplikasi e-wallet/bank Anda."}</p>
                         <p className="text-xs text-muted-foreground">Invoice: <strong>{qris.invoice}</strong> · Total: <strong>{formatIDR(qris.total)}</strong></p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin" /> Menunggu pembayaran...
@@ -327,7 +395,7 @@ function CheckoutPage() {
               <span>Total</span><span className="text-gradient">{formatIDR(total)}</span>
             </div>
             <Button onClick={submit} disabled={loading || !items.length || belowMin || (form.payment_method === "QRIS" && !!qris && qrisStatus === "pending")} className="w-full bg-gradient-primary shadow-glow" size="lg">
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...</> : belowMin ? `Minimal ${MIN_QTY} pcs` : form.payment_method === "QRIS" ? (qris ? "Menunggu Pembayaran" : "Bayar Sekarang") : "Saya Sudah Bayar"}
+              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...</> : belowMin ? `Minimal ${MIN_QTY} pcs` : form.payment_method === "QRIS" ? (qrisStatus === "failed" ? "Buat QR Baru" : qris ? "Menunggu Pembayaran" : "Bayar Sekarang") : "Saya Sudah Bayar"}
             </Button>
             {belowMin && <p className="text-xs text-destructive text-center">Tombol aktif setelah keranjang ≥ {MIN_QTY} pcs.</p>}
           </Card>

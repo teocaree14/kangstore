@@ -45,6 +45,10 @@ export type Order = {
   invoice_number: string | null;
   total_price: number;
   proof_image: string | null;
+  midtrans_order_id?: string | null;
+  midtrans_transaction_id?: string | null;
+  qr_string?: string | null;
+  qr_url?: string | null;
   created_at: string;
   product?: Product;
   items?: OrderItem[];

@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { toDataURL } from "qrcode";
 
 const SUPABASE_URL = "https://umgkqmfisducjekpzxgi.supabase.co";
 
@@ -20,6 +21,12 @@ export function midtransApiBase() {
   return isMidtransProduction()
     ? "https://api.midtrans.com/v2"
     : "https://api.sandbox.midtrans.com/v2";
+}
+
+export function midtransSnapBase() {
+  return isMidtransProduction()
+    ? "https://app.midtrans.com/snap/v1"
+    : "https://app.sandbox.midtrans.com/snap/v1";
 }
 
 export function midtransAuthHeader() {
@@ -74,17 +81,116 @@ export async function chargeQris(params: {
     validation_messages?: string[];
   };
   if (!res.ok || (json.status_code && !["200", "201"].includes(json.status_code))) {
+    if (json.status_message?.toLowerCase().includes("payment channel is not activated")) {
+      console.info("[midtrans charge] Core QRIS inactive, using Snap QRIS fallback.");
+      return createSnapQrisTransaction(params);
+    }
     console.error("[midtrans charge] failed:", JSON.stringify(json));
     const detail = json.validation_messages?.length ? `: ${json.validation_messages.join(", ")}` : "";
     throw new Error((json.status_message || `Midtrans error (${res.status})`) + detail);
   }
   const qrUrl = json.actions?.find((a) => a.name === "generate-qr-code")?.url ?? null;
+  const qrImageDataUrl = await createQrImageDataUrl({ qrString: json.qr_string ?? null, qrUrl });
+  if (!qrUrl && !json.qr_string && !qrImageDataUrl) {
+    console.error("[midtrans charge] no QR payload:", JSON.stringify(json));
+    throw new Error("Midtrans berhasil membuat transaksi, tetapi tidak mengirim data QRIS.");
+  }
   return {
     transaction_id: json.transaction_id!,
     qr_string: json.qr_string ?? null,
     qr_url: qrUrl,
+    qr_image_data_url: qrImageDataUrl,
+    snap_token: null,
     transaction_status: json.transaction_status ?? "pending",
   };
+}
+
+async function createSnapQrisTransaction(params: {
+  orderId: string;
+  grossAmount: number;
+  customerName: string;
+  phone: string;
+}) {
+  const body = {
+    transaction_details: {
+      order_id: params.orderId,
+      gross_amount: Math.round(params.grossAmount),
+    },
+    enabled_payments: ["other_qris", "gopay"],
+    customer_details: {
+      first_name: params.customerName,
+      phone: params.phone,
+    },
+  };
+
+  const res = await fetch(`${midtransSnapBase()}/transactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: midtransAuthHeader(),
+    },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json()) as { token?: string; redirect_url?: string; error_messages?: string[] };
+  if (!res.ok || !json.redirect_url) {
+    console.error("[midtrans snap] failed:", JSON.stringify(json));
+    throw new Error(json.error_messages?.join(", ") || `Midtrans Snap error (${res.status})`);
+  }
+
+  return {
+    transaction_id: json.token ?? params.orderId,
+    qr_string: null,
+    qr_url: json.redirect_url,
+    qr_image_data_url: null,
+    snap_token: json.token,
+    transaction_status: "pending",
+  };
+}
+
+export async function createQrImageDataUrl(params: { qrString: string | null; qrUrl: string | null }) {
+  if (params.qrString) {
+    return toDataURL(params.qrString, { margin: 1, width: 320, errorCorrectionLevel: "M" });
+  }
+
+  if (!params.qrUrl) return null;
+  try {
+    const qrRes = await fetch(params.qrUrl, {
+      headers: {
+        Accept: "image/png,image/*,*/*",
+        Authorization: midtransAuthHeader(),
+      },
+    });
+    if (!qrRes.ok) {
+      console.error("[midtrans qr image] fetch failed:", qrRes.status, await qrRes.text());
+      return null;
+    }
+    const contentType = qrRes.headers.get("content-type")?.split(";")[0] || "image/png";
+    const bytes = await qrRes.arrayBuffer();
+    return `data:${contentType};base64,${Buffer.from(bytes).toString("base64")}`;
+  } catch (e) {
+    console.error("[midtrans qr image] fetch error:", e);
+    return null;
+  }
+}
+
+export async function getMidtransTransactionStatus(orderId: string) {
+  const res = await fetch(`${midtransApiBase()}/${encodeURIComponent(orderId)}/status`, {
+    headers: { Accept: "application/json", Authorization: midtransAuthHeader() },
+  });
+  const json = (await res.json()) as { transaction_status?: string; fraud_status?: string; status_message?: string };
+  if (!res.ok) throw new Error(json.status_message || `Midtrans status error (${res.status})`);
+  return json;
+}
+
+export async function cancelMidtransTransaction(orderId: string) {
+  const res = await fetch(`${midtransApiBase()}/${encodeURIComponent(orderId)}/cancel`, {
+    method: "POST",
+    headers: { Accept: "application/json", Authorization: midtransAuthHeader() },
+  });
+  const json = (await res.json().catch(() => ({}))) as { status_message?: string };
+  if (!res.ok) console.error("[midtrans cancel] failed:", JSON.stringify(json));
+  return res.ok;
 }
 
 export function verifyMidtransSignature(payload: {
