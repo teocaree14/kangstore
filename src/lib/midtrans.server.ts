@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import QRCode from "qrcode";
+import { toDataURL } from "qrcode";
 
 const SUPABASE_URL = "https://umgkqmfisducjekpzxgi.supabase.co";
 
@@ -96,7 +96,7 @@ export async function chargeQris(params: {
 
 export async function createQrImageDataUrl(params: { qrString: string | null; qrUrl: string | null }) {
   if (params.qrString) {
-    return QRCode.toDataURL(params.qrString, { margin: 1, width: 320, errorCorrectionLevel: "M" });
+    return toDataURL(params.qrString, { margin: 1, width: 320, errorCorrectionLevel: "M" });
   }
 
   if (!params.qrUrl) return null;
