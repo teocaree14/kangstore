@@ -94,7 +94,7 @@ export async function chargeQris(params: {
   };
 }
 
-async function createQrImageDataUrl(params: { qrString: string | null; qrUrl: string | null }) {
+export async function createQrImageDataUrl(params: { qrString: string | null; qrUrl: string | null }) {
   if (params.qrString) {
     return QRCode.toDataURL(params.qrString, { margin: 1, width: 320, errorCorrectionLevel: "M" });
   }
