@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
+import { toDataURL } from "qrcode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase, type Order } from "@/lib/supabase";
@@ -40,7 +40,7 @@ function DetailPage() {
       setQrImage(null);
       return;
     }
-    QRCode.toDataURL(order.qr_string, { margin: 1, width: 320, errorCorrectionLevel: "M" })
+    toDataURL(order.qr_string, { margin: 1, width: 320, errorCorrectionLevel: "M" })
       .then(setQrImage)
       .catch((e) => console.error("[order qr] render failed:", e));
   }, [order?.qr_string, order?.qr_url]);
