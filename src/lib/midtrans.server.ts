@@ -23,6 +23,12 @@ export function midtransApiBase() {
     : "https://api.sandbox.midtrans.com/v2";
 }
 
+export function midtransSnapBase() {
+  return isMidtransProduction()
+    ? "https://app.midtrans.com/snap/v1"
+    : "https://app.sandbox.midtrans.com/snap/v1";
+}
+
 export function midtransAuthHeader() {
   return "Basic " + Buffer.from(getMidtransServerKey() + ":").toString("base64");
 }
@@ -76,6 +82,9 @@ export async function chargeQris(params: {
   };
   if (!res.ok || (json.status_code && !["200", "201"].includes(json.status_code))) {
     console.error("[midtrans charge] failed:", JSON.stringify(json));
+    if (json.status_message?.toLowerCase().includes("payment channel is not activated")) {
+      return createSnapQrisTransaction(params);
+    }
     const detail = json.validation_messages?.length ? `: ${json.validation_messages.join(", ")}` : "";
     throw new Error((json.status_message || `Midtrans error (${res.status})`) + detail);
   }
@@ -91,6 +100,48 @@ export async function chargeQris(params: {
     qr_url: qrUrl,
     qr_image_data_url: qrImageDataUrl,
     transaction_status: json.transaction_status ?? "pending",
+  };
+}
+
+async function createSnapQrisTransaction(params: {
+  orderId: string;
+  grossAmount: number;
+  customerName: string;
+  phone: string;
+}) {
+  const body = {
+    transaction_details: {
+      order_id: params.orderId,
+      gross_amount: Math.round(params.grossAmount),
+    },
+    enabled_payments: ["other_qris", "gopay"],
+    customer_details: {
+      first_name: params.customerName,
+      phone: params.phone,
+    },
+  };
+
+  const res = await fetch(`${midtransSnapBase()}/transactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: midtransAuthHeader(),
+    },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json()) as { token?: string; redirect_url?: string; error_messages?: string[] };
+  if (!res.ok || !json.redirect_url) {
+    console.error("[midtrans snap] failed:", JSON.stringify(json));
+    throw new Error(json.error_messages?.join(", ") || `Midtrans Snap error (${res.status})`);
+  }
+
+  return {
+    transaction_id: json.token ?? params.orderId,
+    qr_string: null,
+    qr_url: json.redirect_url,
+    qr_image_data_url: null,
+    transaction_status: "pending",
   };
 }
 
