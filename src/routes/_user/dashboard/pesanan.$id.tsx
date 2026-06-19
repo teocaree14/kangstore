@@ -140,7 +140,7 @@ function DetailPage() {
             ) : (
               <div className="h-64 w-64 grid place-items-center rounded-lg border bg-background p-4 text-muted-foreground">QRIS belum tersedia</div>
             )}
-            <p className="text-xs text-muted-foreground">Scan QRIS ini untuk menyelesaikan pembayaran.</p>
+            <p className="text-xs text-muted-foreground">{isSnapPayment ? "Buka halaman Midtrans, pilih GoPay QRIS, lalu scan QRIS untuk membayar." : "Scan QRIS ini untuk menyelesaikan pembayaran."}</p>
           </div>
         )}
         {canCancel && (
