@@ -18,6 +18,36 @@ import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { createQrisOrder, getOrderPaymentStatus } from "@/lib/midtrans.functions";
 
+declare global {
+  interface Window {
+    snap?: {
+      pay: (token: string, options?: Record<string, unknown>) => void;
+    };
+  }
+}
+
+const MIDTRANS_CLIENT_KEY = "Mid-client-JzzMAf3oHGoDyRWI";
+const MIDTRANS_SNAP_SCRIPT_URL = "https://app.midtrans.com/snap/snap.js";
+
+function loadMidtransSnap() {
+  if (window.snap) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById("midtrans-snap-js") as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Snap Midtrans gagal dimuat.")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "midtrans-snap-js";
+    script.src = MIDTRANS_SNAP_SCRIPT_URL;
+    script.setAttribute("data-client-key", MIDTRANS_CLIENT_KEY);
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Snap Midtrans gagal dimuat."));
+    document.body.appendChild(script);
+  });
+}
+
 export const Route = createFileRoute("/_user/checkout")({
   component: CheckoutPage,
 });
@@ -43,7 +73,7 @@ function CheckoutPage() {
   const [form, setForm] = useState({ customer_name: "", phone: "", address: "", payment_method: "QRIS" as "QRIS" | "BCA" | "DANA" });
   const [proof, setProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [qris, setQris] = useState<{ orderId: string; qrUrl: string | null; qrString: string | null; total: number; invoice: string } | null>(null);
+  const [qris, setQris] = useState<{ orderId: string; qrUrl: string | null; qrString: string | null; snapToken?: string | null; total: number; invoice: string } | null>(null);
   const [qrisStatus, setQrisStatus] = useState<"pending" | "paid" | "failed">("pending");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createQris = useServerFn(createQrisOrder);
@@ -57,6 +87,27 @@ function CheckoutPage() {
   }, [authLoading, user, nav, path]);
 
   const copy = (v: string, l: string) => { navigator.clipboard.writeText(v); toast.success(`${l} disalin`); };
+
+  const openSnapPayment = async (token: string, redirectUrl: string | null, orderId: string) => {
+    try {
+      await loadMidtransSnap();
+      window.snap?.pay(token, {
+        onSuccess: () => {
+          clear();
+          nav({ to: "/dashboard/pesanan/$id", params: { id: orderId } });
+        },
+        onPending: () => toast.info("QRIS menunggu pembayaran."),
+        onClose: () => toast.info("Pembayaran belum selesai. Anda bisa melanjutkan dari riwayat pesanan."),
+        onError: () => {
+          if (redirectUrl) window.location.href = redirectUrl;
+        },
+      });
+    } catch (e) {
+      console.error("[midtrans snap] open failed:", e);
+      if (redirectUrl) window.location.href = redirectUrl;
+      else toast.error(e instanceof Error ? e.message : "Gagal membuka pembayaran QRIS.");
+    }
+  };
 
   const submit = async () => {
     if (!user) return toast.error("Anda harus login");
@@ -91,11 +142,13 @@ function CheckoutPage() {
           orderId: res.order_id,
           qrUrl: res.qr_url ?? null,
           qrString: res.qr_string ?? null,
+          snapToken: res.snap_token ?? null,
           total: res.total,
           invoice: res.invoice,
         });
         setQrisStatus("pending");
         toast.success("QRIS siap dibayar. Scan untuk membayar.");
+        if (res.snap_token) void openSnapPayment(res.snap_token, res.qr_url ?? null, res.order_id);
         return;
       }
 
@@ -275,10 +328,11 @@ function CheckoutPage() {
                     ) : (
                       <>
                         {qris.qrUrl && qrisIsSnap ? (
-                          <div className="w-full max-w-md space-y-3">
-                            <iframe src={qris.qrUrl} title="Pembayaran QRIS Midtrans" className="h-[520px] w-full rounded-lg border bg-background" />
-                            <Button type="button" variant="outline" onClick={() => window.open(qris.qrUrl!, "_blank", "noopener,noreferrer")}>
-                              Buka Halaman Pembayaran
+                          <div className="w-full max-w-md rounded-lg border bg-background p-4 space-y-3">
+                            <QrCode className="h-16 w-16 mx-auto text-primary" />
+                            <p className="text-sm font-medium">Pembayaran QRIS dibuka melalui Midtrans.</p>
+                            <Button type="button" variant="outline" onClick={() => qris.snapToken ? openSnapPayment(qris.snapToken, qris.qrUrl, qris.orderId) : window.open(qris.qrUrl!, "_blank", "noopener,noreferrer")}>
+                              Buka Pembayaran QRIS
                             </Button>
                           </div>
                         ) : qris.qrUrl ? (
