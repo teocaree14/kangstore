@@ -96,6 +96,7 @@ export const createQrisOrder = createServerFn({ method: "POST" })
       invoice,
       qr_string: charge.qr_string,
       qr_url: displayQrUrl,
+      snap_token: charge.snap_token,
       total: data.total,
     };
   });
