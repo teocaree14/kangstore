@@ -340,7 +340,7 @@ function CheckoutPage() {
                         ) : (
                           <div className="h-64 w-64 grid place-items-center rounded-lg bg-background border text-center p-4"><div><QrCode className="h-20 w-20 text-muted-foreground mx-auto mb-2" /><p className="text-xs text-muted-foreground">QR belum tersedia. Coba buat ulang pesanan.</p></div></div>
                         )}
-                        <p className="text-sm">Scan QR di atas dengan aplikasi e-wallet/bank Anda.</p>
+                        <p className="text-sm">{qrisIsSnap ? "Pilih GoPay QRIS lalu scan QRIS dari halaman Midtrans." : "Scan QR di atas dengan aplikasi e-wallet/bank Anda."}</p>
                         <p className="text-xs text-muted-foreground">Invoice: <strong>{qris.invoice}</strong> · Total: <strong>{formatIDR(qris.total)}</strong></p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3 w-3 animate-spin" /> Menunggu pembayaran...
