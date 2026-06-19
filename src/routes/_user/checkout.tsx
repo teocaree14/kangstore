@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Copy, Upload, QrCode, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
+import { Copy, Upload, QrCode, AlertTriangle, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { formatIDR, useCart } from "@/lib/cart";
 import { supabase } from "@/lib/supabase";
@@ -265,12 +265,18 @@ function CheckoutPage() {
                         <p className="font-semibold text-lg">Pembayaran Berhasil!</p>
                         <p className="text-sm text-muted-foreground">Mengalihkan ke dashboard...</p>
                       </div>
+                    ) : qrisStatus === "failed" ? (
+                      <div className="flex flex-col items-center gap-2 py-6">
+                        <XCircle className="h-16 w-16 text-destructive" />
+                        <p className="font-semibold text-lg">Pembayaran Gagal</p>
+                        <p className="text-sm text-muted-foreground">Silakan tekan tombol ringkasan untuk membuat QR baru.</p>
+                      </div>
                     ) : (
                       <>
                         {qris.qrUrl ? (
                           <img src={qris.qrUrl} alt="QRIS" className="h-64 w-64 rounded-lg border bg-white p-2" />
                         ) : (
-                          <div className="h-64 w-64 grid place-items-center rounded-lg bg-background border"><QrCode className="h-20 w-20 text-muted-foreground" /></div>
+                          <div className="h-64 w-64 grid place-items-center rounded-lg bg-background border text-center p-4"><div><QrCode className="h-20 w-20 text-muted-foreground mx-auto mb-2" /><p className="text-xs text-muted-foreground">QR belum tersedia. Coba buat ulang pesanan.</p></div></div>
                         )}
                         <p className="text-sm">Scan QR di atas dengan aplikasi e-wallet/bank Anda.</p>
                         <p className="text-xs text-muted-foreground">Invoice: <strong>{qris.invoice}</strong> · Total: <strong>{formatIDR(qris.total)}</strong></p>
@@ -327,7 +333,7 @@ function CheckoutPage() {
               <span>Total</span><span className="text-gradient">{formatIDR(total)}</span>
             </div>
             <Button onClick={submit} disabled={loading || !items.length || belowMin || (form.payment_method === "QRIS" && !!qris && qrisStatus === "pending")} className="w-full bg-gradient-primary shadow-glow" size="lg">
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...</> : belowMin ? `Minimal ${MIN_QTY} pcs` : form.payment_method === "QRIS" ? (qris ? "Menunggu Pembayaran" : "Bayar Sekarang") : "Saya Sudah Bayar"}
+              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...</> : belowMin ? `Minimal ${MIN_QTY} pcs` : form.payment_method === "QRIS" ? (qrisStatus === "failed" ? "Buat QR Baru" : qris ? "Menunggu Pembayaran" : "Bayar Sekarang") : "Saya Sudah Bayar"}
             </Button>
             {belowMin && <p className="text-xs text-destructive text-center">Tombol aktif setelah keranjang ≥ {MIN_QTY} pcs.</p>}
           </Card>
