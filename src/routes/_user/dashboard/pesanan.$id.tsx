@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase, type Order } from "@/lib/supabase";
@@ -7,6 +9,7 @@ import { formatIDR } from "@/lib/cart";
 import { ArrowLeft, Loader2, Copy, Truck } from "lucide-react";
 import { OrderStatusTimeline, StatusBadge } from "@/components/dashboard/OrderStatusTimeline";
 import { toast } from "sonner";
+import { cancelPendingOrder } from "@/lib/midtrans.functions";
 
 export const Route = createFileRoute("/_user/dashboard/pesanan/$id")({
   component: DetailPage,
@@ -16,6 +19,9 @@ function DetailPage() {
   const { id } = Route.useParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const [canceling, setCanceling] = useState(false);
+  const cancelOrder = useServerFn(cancelPendingOrder);
 
   useEffect(() => {
     const load = () => {
@@ -29,10 +35,38 @@ function DetailPage() {
     return () => { supabase.removeChannel(ch); };
   }, [id]);
 
+  useEffect(() => {
+    if (!order?.qr_string || order.qr_url) {
+      setQrImage(null);
+      return;
+    }
+    QRCode.toDataURL(order.qr_string, { margin: 1, width: 320, errorCorrectionLevel: "M" })
+      .then(setQrImage)
+      .catch((e) => console.error("[order qr] render failed:", e));
+  }, [order?.qr_string, order?.qr_url]);
+
   if (loading) return <Card className="p-12 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></Card>;
   if (!order) return <Card className="p-12 text-center text-muted-foreground">Pesanan tidak ditemukan</Card>;
 
   const copy = (v: string) => { navigator.clipboard.writeText(v); toast.success("Disalin"); };
+  const qrSrc = order.qr_url || qrImage;
+  const canCancel = order.payment_status === "menunggu_pembayaran" && order.shipping_status === "menunggu_pembayaran";
+  const cancel = async () => {
+    if (!canCancel || !window.confirm("Batalkan pesanan ini?")) return;
+    setCanceling(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Sesi tidak valid, silakan login ulang.");
+      await cancelOrder({ data: { authToken: token, orderId: order.id } });
+      setOrder({ ...order, payment_status: "gagal" });
+      toast.success("Pesanan dibatalkan");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal membatalkan pesanan");
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -93,6 +127,21 @@ function DetailPage() {
         <h2 className="font-semibold text-lg">Pembayaran</h2>
         <div className="flex justify-between"><span className="text-muted-foreground">Metode</span><span className="font-medium">{order.payment_method}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span className="font-medium capitalize">{order.payment_status.replace(/_/g, " ")}</span></div>
+        {order.payment_method === "QRIS" && canCancel && (
+          <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/50 p-4 text-center">
+            {qrSrc ? (
+              <img src={qrSrc} alt="QRIS pembayaran" className="h-64 w-64 rounded-lg border bg-white p-2" />
+            ) : (
+              <div className="h-64 w-64 grid place-items-center rounded-lg border bg-background p-4 text-muted-foreground">QRIS belum tersedia</div>
+            )}
+            <p className="text-xs text-muted-foreground">Scan QRIS ini untuk menyelesaikan pembayaran.</p>
+          </div>
+        )}
+        {canCancel && (
+          <Button type="button" variant="destructive" onClick={cancel} disabled={canceling} className="w-full">
+            {canceling ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Membatalkan...</> : "Batalkan Pesanan"}
+          </Button>
+        )}
         {order.proof_image && (
           <div>
             <p className="text-xs text-muted-foreground mb-1">Bukti Transfer</p>
