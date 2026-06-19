@@ -50,6 +50,7 @@ function DetailPage() {
 
   const copy = (v: string) => { navigator.clipboard.writeText(v); toast.success("Disalin"); };
   const qrSrc = order.qr_url || qrImage;
+  const isSnapPayment = !!qrSrc && !qrSrc.startsWith("data:image");
   const canCancel = order.payment_status === "menunggu_pembayaran" && order.shipping_status === "menunggu_pembayaran";
   const cancel = async () => {
     if (!canCancel || !window.confirm("Batalkan pesanan ini?")) return;
@@ -129,7 +130,12 @@ function DetailPage() {
         <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span className="font-medium capitalize">{order.payment_status.replace(/_/g, " ")}</span></div>
         {order.payment_method === "QRIS" && canCancel && (
           <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/50 p-4 text-center">
-            {qrSrc ? (
+            {qrSrc && isSnapPayment ? (
+              <div className="w-full max-w-md space-y-3">
+                <iframe src={qrSrc} title="Pembayaran QRIS Midtrans" className="h-[520px] w-full rounded-lg border bg-background" />
+                <Button type="button" variant="outline" onClick={() => window.open(qrSrc, "_blank", "noopener,noreferrer")}>Buka Halaman Pembayaran</Button>
+              </div>
+            ) : qrSrc ? (
               <img src={qrSrc} alt="QRIS pembayaran" className="h-64 w-64 rounded-lg border bg-white p-2" />
             ) : (
               <div className="h-64 w-64 grid place-items-center rounded-lg border bg-background p-4 text-muted-foreground">QRIS belum tersedia</div>
