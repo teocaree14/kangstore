@@ -50,6 +50,7 @@ function CheckoutPage() {
   const checkStatus = useServerFn(getOrderPaymentStatus);
 
   const belowMin = count < MIN_QTY;
+  const qrisIsSnap = !!qris?.qrUrl && !qris.qrUrl.startsWith("data:image");
 
   useEffect(() => {
     if (!authLoading && !user) nav({ to: "/login", search: { redirect: path } });
@@ -273,7 +274,14 @@ function CheckoutPage() {
                       </div>
                     ) : (
                       <>
-                        {qris.qrUrl ? (
+                        {qris.qrUrl && qrisIsSnap ? (
+                          <div className="w-full max-w-md space-y-3">
+                            <iframe src={qris.qrUrl} title="Pembayaran QRIS Midtrans" className="h-[520px] w-full rounded-lg border bg-background" />
+                            <Button type="button" variant="outline" onClick={() => window.open(qris.qrUrl!, "_blank", "noopener,noreferrer")}>
+                              Buka Halaman Pembayaran
+                            </Button>
+                          </div>
+                        ) : qris.qrUrl ? (
                           <img src={qris.qrUrl} alt="QRIS" className="h-64 w-64 rounded-lg border bg-white p-2" />
                         ) : (
                           <div className="h-64 w-64 grid place-items-center rounded-lg bg-background border text-center p-4"><div><QrCode className="h-20 w-20 text-muted-foreground mx-auto mb-2" /><p className="text-xs text-muted-foreground">QR belum tersedia. Coba buat ulang pesanan.</p></div></div>
