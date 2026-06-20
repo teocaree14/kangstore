@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { toDataURL } from "qrcode";
 
 const SUPABASE_URL = "https://umgkqmfisducjekpzxgi.supabase.co";
+const PRODUCTION_CLIENT_KEY_FALLBACK = "Mid-client-JzzMAf3oHGoDyRWI";
 
 export function getMidtransServerKey() {
   const key = process.env.MIDTRANS_SERVER_KEY;
@@ -17,6 +18,17 @@ export function isMidtransProduction() {
   return (process.env.MIDTRANS_IS_PRODUCTION ?? "true").toLowerCase() === "true";
 }
 
+export function getMidtransEnvironment() {
+  return isMidtransProduction() ? "production" : "sandbox";
+}
+
+export function getMidtransClientKey() {
+  const envKey = process.env.MIDTRANS_CLIENT_KEY;
+  if (envKey) return envKey;
+  if (isMidtransProduction()) return PRODUCTION_CLIENT_KEY_FALLBACK;
+  throw new Error("MIDTRANS_CLIENT_KEY sandbox belum diset.");
+}
+
 export function midtransApiBase() {
   return isMidtransProduction()
     ? "https://api.midtrans.com/v2"
@@ -27,6 +39,12 @@ export function midtransSnapBase() {
   return isMidtransProduction()
     ? "https://app.midtrans.com/snap/v1"
     : "https://app.sandbox.midtrans.com/snap/v1";
+}
+
+export function midtransSnapScriptUrl() {
+  return isMidtransProduction()
+    ? "https://app.midtrans.com/snap/snap.js"
+    : "https://app.sandbox.midtrans.com/snap/snap.js";
 }
 
 export function midtransAuthHeader() {
@@ -46,15 +64,13 @@ export async function chargeQris(params: {
   phone: string;
 }) {
   const body = {
-    payment_type: "gopay",
+    payment_type: "qris",
     transaction_details: {
       order_id: params.orderId,
       gross_amount: Math.round(params.grossAmount),
     },
-    // QRIS Dinamis GoPay di Core API dibuat melalui payment_type "gopay".
-    // Response tetap menyediakan action "generate-qr-code" yang bisa discan semua aplikasi QRIS.
-    gopay: {
-      enable_callback: false,
+    qris: {
+      acquirer: "gopay",
     },
     customer_details: {
       first_name: params.customerName,
@@ -62,7 +78,13 @@ export async function chargeQris(params: {
     },
   };
 
-  const res = await fetch(`${midtransApiBase()}/charge`, {
+  const endpoint = `${midtransApiBase()}/charge`;
+  console.info(
+    "[midtrans charge] request:",
+    JSON.stringify({ endpoint, environment: getMidtransEnvironment(), payment_type: body.payment_type, qris: body.qris }),
+  );
+
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -80,6 +102,19 @@ export async function chargeQris(params: {
     actions?: Array<{ name: string; url: string; method: string }>;
     validation_messages?: string[];
   };
+  console.info(
+    "[midtrans charge] response:",
+    JSON.stringify({
+      endpoint,
+      http_status: res.status,
+      status_code: json.status_code,
+      status_message: json.status_message,
+      transaction_id_present: Boolean(json.transaction_id),
+      transaction_status: json.transaction_status,
+      action_names: json.actions?.map((a) => a.name) ?? [],
+      validation_messages: json.validation_messages,
+    }),
+  );
   if (!res.ok || (json.status_code && !["200", "201"].includes(json.status_code))) {
     if (json.status_message?.toLowerCase().includes("payment channel is not activated")) {
       console.info("[midtrans charge] Core QRIS inactive, using Snap QRIS fallback.");
@@ -116,14 +151,20 @@ async function createSnapQrisTransaction(params: {
       order_id: params.orderId,
       gross_amount: Math.round(params.grossAmount),
     },
-    enabled_payments: ["other_qris", "gopay"],
+    enabled_payments: ["qris"],
     customer_details: {
       first_name: params.customerName,
       phone: params.phone,
     },
   };
 
-  const res = await fetch(`${midtransSnapBase()}/transactions`, {
+  const endpoint = `${midtransSnapBase()}/transactions`;
+  console.info(
+    "[midtrans snap] request:",
+    JSON.stringify({ endpoint, environment: getMidtransEnvironment(), enabled_payments: body.enabled_payments }),
+  );
+
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -133,6 +174,16 @@ async function createSnapQrisTransaction(params: {
     body: JSON.stringify(body),
   });
   const json = (await res.json()) as { token?: string; redirect_url?: string; error_messages?: string[] };
+  console.info(
+    "[midtrans snap] response:",
+    JSON.stringify({
+      endpoint,
+      http_status: res.status,
+      token_present: Boolean(json.token),
+      redirect_url: json.redirect_url,
+      error_messages: json.error_messages,
+    }),
+  );
   if (!res.ok || !json.redirect_url) {
     console.error("[midtrans snap] failed:", JSON.stringify(json));
     throw new Error(json.error_messages?.join(", ") || `Midtrans Snap error (${res.status})`);
