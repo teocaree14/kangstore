@@ -155,7 +155,7 @@ async function createSnapQrisTransaction(params: {
       order_id: params.orderId,
       gross_amount: Math.round(params.grossAmount),
     },
-    enabled_payments: ["qris"],
+    enabled_payments: ["other_qris", "gopay"],
     customer_details: {
       first_name: params.customerName,
       phone: params.phone,
