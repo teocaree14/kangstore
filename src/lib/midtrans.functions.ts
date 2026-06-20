@@ -18,6 +18,21 @@ export type CancelPendingOrderInput = {
   orderId: string;
 };
 
+export const getMidtransClientConfig = createServerFn({ method: "GET" }).handler(async () => {
+  const { getMidtransClientKey, getMidtransEnvironment, midtransSnapScriptUrl } = await import("./midtrans.server");
+  const clientKey = getMidtransClientKey();
+  return {
+    clientKey,
+    environment: getMidtransEnvironment(),
+    snapScriptUrl: midtransSnapScriptUrl(),
+    clientKeyPrefix: clientKey.startsWith("SB-Mid-client-")
+      ? "SB-Mid-client-"
+      : clientKey.startsWith("Mid-client-")
+        ? "Mid-client-"
+        : "unknown",
+  };
+});
+
 export const createQrisOrder = createServerFn({ method: "POST" })
   .inputValidator((data: CreateQrisInput) => data)
   .handler(async ({ data }) => {
@@ -97,6 +112,10 @@ export const createQrisOrder = createServerFn({ method: "POST" })
       qr_string: charge.qr_string,
       qr_url: displayQrUrl,
       snap_token: charge.snap_token,
+      midtrans_environment: charge.environment,
+      midtrans_endpoint: charge.endpoint,
+      midtrans_enabled_payments: charge.enabled_payments,
+      midtrans_payment_type: charge.payment_type,
       total: data.total,
     };
   });
