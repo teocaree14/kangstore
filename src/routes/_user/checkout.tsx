@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
-import { createQrisOrder, getOrderPaymentStatus } from "@/lib/midtrans.functions";
+import { createQrisOrder, getMidtransClientConfig, getOrderPaymentStatus } from "@/lib/midtrans.functions";
 
 declare global {
   interface Window {
@@ -26,10 +26,7 @@ declare global {
   }
 }
 
-const MIDTRANS_CLIENT_KEY = "Mid-client-JzzMAf3oHGoDyRWI";
-const MIDTRANS_SNAP_SCRIPT_URL = "https://app.midtrans.com/snap/snap.js";
-
-function loadMidtransSnap() {
+function loadMidtransSnap(clientKey: string, snapScriptUrl: string) {
   if (window.snap) return Promise.resolve();
   return new Promise<void>((resolve, reject) => {
     const existing = document.getElementById("midtrans-snap-js") as HTMLScriptElement | null;
@@ -40,8 +37,8 @@ function loadMidtransSnap() {
     }
     const script = document.createElement("script");
     script.id = "midtrans-snap-js";
-    script.src = MIDTRANS_SNAP_SCRIPT_URL;
-    script.setAttribute("data-client-key", MIDTRANS_CLIENT_KEY);
+    script.src = snapScriptUrl;
+    script.setAttribute("data-client-key", clientKey);
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("Snap Midtrans gagal dimuat."));
     document.body.appendChild(script);
@@ -73,10 +70,12 @@ function CheckoutPage() {
   const [form, setForm] = useState({ customer_name: "", phone: "", address: "", payment_method: "QRIS" as "QRIS" | "BCA" | "DANA" });
   const [proof, setProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [midtransConfig, setMidtransConfig] = useState<{ clientKey: string; environment: string; snapScriptUrl: string; clientKeyPrefix: string } | null>(null);
   const [qris, setQris] = useState<{ orderId: string; qrUrl: string | null; qrString: string | null; snapToken?: string | null; total: number; invoice: string } | null>(null);
   const [qrisStatus, setQrisStatus] = useState<"pending" | "paid" | "failed">("pending");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createQris = useServerFn(createQrisOrder);
+  const loadMidtransConfig = useServerFn(getMidtransClientConfig);
   const checkStatus = useServerFn(getOrderPaymentStatus);
 
   const belowMin = count < MIN_QTY;
@@ -86,11 +85,25 @@ function CheckoutPage() {
     if (!authLoading && !user) nav({ to: "/login", search: { redirect: path } });
   }, [authLoading, user, nav, path]);
 
+  useEffect(() => {
+    loadMidtransConfig()
+      .then((config) => {
+        setMidtransConfig(config);
+        console.info("[midtrans client config]", {
+          environment: config.environment,
+          snapScriptUrl: config.snapScriptUrl,
+          clientKeyPrefix: config.clientKeyPrefix,
+        });
+      })
+      .catch((e) => console.error("[midtrans client config] failed:", e));
+  }, [loadMidtransConfig]);
+
   const copy = (v: string, l: string) => { navigator.clipboard.writeText(v); toast.success(`${l} disalin`); };
 
   const openSnapPayment = async (token: string, redirectUrl: string | null, orderId: string) => {
     try {
-      await loadMidtransSnap();
+      if (!midtransConfig) throw new Error("Konfigurasi Midtrans belum siap.");
+      await loadMidtransSnap(midtransConfig.clientKey, midtransConfig.snapScriptUrl);
       window.snap?.pay(token, {
         onSuccess: () => {
           clear();
@@ -137,6 +150,15 @@ function CheckoutPage() {
               quantity: i.qty,
             })),
           },
+        });
+        console.info("[midtrans checkout] create transaction result", {
+          environment: res.midtrans_environment,
+          endpoint: res.midtrans_endpoint,
+          paymentType: res.midtrans_payment_type,
+          enabledPayments: res.midtrans_enabled_payments,
+          snapTokenPresent: Boolean(res.snap_token),
+          qrUrlPresent: Boolean(res.qr_url),
+          qrStringPresent: Boolean(res.qr_string),
         });
         setQris({
           orderId: res.order_id,
