@@ -137,6 +137,10 @@ export async function chargeQris(params: {
     qr_image_data_url: qrImageDataUrl,
     snap_token: null,
     transaction_status: json.transaction_status ?? "pending",
+    environment: getMidtransEnvironment(),
+    endpoint,
+    enabled_payments: null,
+    payment_type: body.payment_type,
   };
 }
 
@@ -196,6 +200,10 @@ async function createSnapQrisTransaction(params: {
     qr_image_data_url: null,
     snap_token: json.token,
     transaction_status: "pending",
+    environment: getMidtransEnvironment(),
+    endpoint,
+    enabled_payments: body.enabled_payments,
+    payment_type: null,
   };
 }
 
